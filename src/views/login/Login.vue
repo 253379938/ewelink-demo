@@ -5,6 +5,7 @@ import { regionMapMerge, appid, appSecret, type RegionInfo } from "@/constants"
 import crypto from 'crypto-js'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router';
+import {useUserStore} from '@/store/userStore'
 
 const regionLabel = reactive<RegionInfo[]>(regionMapMerge);
 const accountForm = reactive<{ countryCode: string; phoneNumber: string; password: string }>({
@@ -14,6 +15,7 @@ const accountForm = reactive<{ countryCode: string; phoneNumber: string; passwor
 });
 
 const router = useRouter();
+const userStore = useUserStore();
 const login = async () => {
     const formatAccount = {
         countryCode: accountForm.countryCode,
@@ -33,8 +35,7 @@ const login = async () => {
     })
     const res = await data.json();
     if (res.error === 0) {
-        localStorage.setItem('accessToken', res.data.at);
-        localStorage.setItem('refreshToken', res.data.rt);
+        userStore.setUserInfo(res.data);
         router.push('/home')
     }else {
         ElMessage({
