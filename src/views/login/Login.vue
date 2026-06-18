@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { User, Lock, Location } from '@element-plus/icons-vue';
 import {  reactive } from 'vue';
-import { regionMapMerge, appid, appSecret, type RegionInfo } from "@/constants"
+import { regionMapMerge, appSecret, type RegionInfo } from "@/constants"
 import crypto from 'crypto-js'
-import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router';
-import {useUserStore} from '@/store/userStore'
+import { useUserStore } from '@/store/userStore'
+import request from '@/request/request'
 
 const regionLabel = reactive<RegionInfo[]>(regionMapMerge);
 const accountForm = reactive<{ countryCode: string; phoneNumber: string; password: string }>({
@@ -16,6 +16,7 @@ const accountForm = reactive<{ countryCode: string; phoneNumber: string; passwor
 
 const router = useRouter();
 const userStore = useUserStore();
+
 const login = async () => {
     const formatAccount = {
         countryCode: accountForm.countryCode,
@@ -24,24 +25,16 @@ const login = async () => {
     };
     const hashSecret = crypto.HmacSHA256(JSON.stringify(formatAccount), appSecret);
     const secretBase64 = hashSecret.toString(crypto.enc.Base64);
-    const data = await fetch("/api/v2/user/login", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CK-Appid': appid,
-            'Authorization':`Sign ${secretBase64}`
-        },
-        body: JSON.stringify(formatAccount),
-    })
-    const res = await data.json();
-    if (res.error === 0) {
+    try {
+        const res = await request.post('/v2/user/login', formatAccount, {
+            headers: {
+                'Authorization': `Sign ${secretBase64}`,
+                'Content-Type': 'application/json'
+            }
+        });
         userStore.setUserInfo(res.data);
-        router.push('/home')
-    }else {
-        ElMessage({
-            type: 'error',
-            message: res.msg,
-        })
+        router.push('/home');
+    } catch {
     }
 }
 </script>

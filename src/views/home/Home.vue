@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from "vue";
-import { appid } from "@/constants";
-import { ElMessage } from "element-plus";
 import NoTing from "@/components/NoTing.vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/store/userStore";
@@ -41,23 +39,8 @@ const getDeclareThings = (familyId: string) => {
 };
 
 const logout = async () => {
-  // const data = await fetch("/api/v2/user/logout", {
-  //   method: "Delete",
-  //   headers: {
-  //     Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-  //     "X-CK-Appid": appid,
-  //   },
-  // });
-  // const res = await data.json();
-  // if (res.error === 0) {
   userStore.clearUserInfo();
   router.push("/login");
-  // } else {
-  //   ElMessage({
-  //     type: "error",
-  //     message: res.msg,
-  //   });
-  // }
 };
 
 const thingDialogVisible = ref(false);

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { appid } from '@/constants'
 import type { ThingListItem,SwitchItem } from '@/views/home/types'
+import request from '@/request/request'
 
 export const useThingStore = defineStore('thing', () => {
   const familyThingsMap = ref<Map<string, ThingListItem[]>>(new Map());
@@ -11,20 +11,8 @@ export const useThingStore = defineStore('thing', () => {
       const accessToken = localStorage.getItem('accessToken');
       if (!accessToken) throw new Error('No token');
 
-      const data = await fetch(`/api/v2/device/thing?familyid=${familyId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-          'X-CK-Appid': appid,
-        },
-      });
-      const res = await data.json();
-      if (res.error === 0) {
+      const res = await request.get(`/v2/device/thing?familyid=${familyId}`);
         familyThingsMap.value.set(familyId, res.data.thingList);
-      } else {
-        throw new Error(res.msg);
-      }
     } catch  {
     }
   };
