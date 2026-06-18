@@ -9,6 +9,9 @@ import { useFamilyStore } from "@/store/home/familyStore";
 import { useThingStore } from "@/store/home/thingStore";
 import { useWsStore } from "@/store/wsStore";
 import Thing from "./components/Thing.vue";
+import TingModel from '@/views/home/components/thingModel.vue'
+import type { ThingListItem } from './types.ts';
+
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -21,6 +24,7 @@ const familyListData = computed(() => familyStore.familyListData);
 const contentRef = ref<HTMLElement | null>(null);
 
 const dialogVisible = ref<boolean>(false);
+const thingLoading = ref<boolean>(false);
 
 // 获取指定 room 的 thing
 const getTingByRoom = (familyId: string, roomId: string) => {
@@ -38,26 +42,34 @@ const getDeclareThings = (familyId: string) => {
 };
 
 const logout = async () => {
-  const data = await fetch("/api/v2/user/logout", {
-    method: "Delete",
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-      "X-CK-Appid": appid,
-    },
-  });
-  const res = await data.json();
-  if (res.error === 0) {
+  // const data = await fetch("/api/v2/user/logout", {
+  //   method: "Delete",
+  //   headers: {
+  //     Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+  //     "X-CK-Appid": appid,
+  //   },
+  // });
+  // const res = await data.json();
+  // if (res.error === 0) {
     userStore.clearUserInfo();
     router.push("/login");
-  } else {
-    ElMessage({
-      type: "error",
-      message: res.msg,
-    });
-  }
+  // } else {
+  //   ElMessage({
+  //     type: "error",
+  //     message: res.msg,
+  //   });
+  // }
+};
+
+const thingDialogVisible = ref(false);
+const currentThing = ref<ThingListItem | null>(null);
+  const handleOpenThingModel = (thing: ThingListItem) => {
+  currentThing.value = thing;
+  thingDialogVisible.value = true;
 };
 
 onMounted(async () => {
+  thingLoading.value = true;
   await wsStore.wsConnect();
   await familyStore.getFamilyList();
   if (familyListData.value?.familyList) {
@@ -66,11 +78,12 @@ onMounted(async () => {
     );
     await Promise.all(promises);
   }
+  thingLoading.value = false;
 });
 </script>
 
 <template>
-  <div class="home-container">
+  <div class="home-container" v-loading="thingLoading">
     <div class="anchor">
       <div class="text-center text-[24px] font-bold mt-[12px]">Demo</div>
       <div class="mt-[20px] mb-[20px] h-0 flex-1 overflow-auto">
@@ -122,6 +135,7 @@ onMounted(async () => {
               v-for="thing in getDeclareThings(family.id)"
               :key="thing.itemData.deviceid"
               :thing="thing"
+              @click="handleOpenThingModel(thing)"
             />
           </div>
         </div>
@@ -136,6 +150,7 @@ onMounted(async () => {
               v-for="thing in getTingByRoom(family.id, room.id)"
               :key="thing.itemData.deviceid"
               :thing="thing"
+              @click="handleOpenThingModel(thing)"
             />
           </div>
 
@@ -154,6 +169,8 @@ onMounted(async () => {
       </div>
     </template>
   </el-dialog>
+  <TingModel v-model="thingDialogVisible" 
+    :thing="currentThing"  />
 </template>
 
 <style scoped lang="scss">

@@ -19,5 +19,7 @@ export const getSwitchStatus = (switches: SwitchItem[]) => {
     onCount,
     offCount,
     text,
+    isAllOn: onCount === total,
+    isAllOff: offCount === total
   };
 };

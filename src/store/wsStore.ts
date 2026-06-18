@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { appid } from "@/constants";
 import { useUserStore } from "@/store/userStore";
+import { useThingStore } from "@/store/home/thingStore";
 
 export interface WsUrlBase {
   IP: string;
@@ -30,6 +31,7 @@ export const useWsStore = defineStore("ws", () => {
   const wsUrlBase = ref<WsUrlBase | null>(null);
   const wsInstance = ref<WebSocket | null>(null);
   const userStore = useUserStore();
+  const thingStore = useThingStore();
   let heartbeatTimer: number | null = null;
 
   // 分配 url
@@ -103,17 +105,23 @@ export const useWsStore = defineStore("ws", () => {
     };
 
     wsInstance.value.onmessage = (e) => {
-      const data = JSON.parse(e.data);
+      if (e.data === "pong") return;
+      try {
+         const data = JSON.parse(e.data);
       // heartBeat
       if (data.config) {
         startHeartbeat(data.config);
       }
       // update
-      if (data.action === "update") {
-
+        if (data.deviceid) {
+            thingStore.setThingSwitch(data.deviceid)
+        }
+        if (data.action === "sysmsg") {
+            thingStore.setThingOnline(data.deviceid, data.params.online)
+        }
+      } catch {
+        
       }
-      // system
-      
     };
 
     wsInstance.value.onerror = (e) => {
