@@ -71,7 +71,7 @@ export const useWsStore = defineStore("ws", () => {
 
     try {
       if (config.hb === 1) {
-        const interval = ((config.hbInterval || 90) - 7)* 1000;
+        const interval = ((config.hbInterval || 90) - 7) * 1000;
 
         heartbeatTimer = setInterval(() => {
           if (wsInstance.value) {
@@ -107,21 +107,24 @@ export const useWsStore = defineStore("ws", () => {
     wsInstance.value.onmessage = (e) => {
       if (e.data === "pong") return;
       try {
-         const data = JSON.parse(e.data);
-      // heartBeat
-      if (data.config) {
-        startHeartbeat(data.config);
-      }
-      // update
-        if (data.deviceid) {
-            thingStore.setThingSwitch(data.deviceid)
+        const data = JSON.parse(e.data);
+        // heartBeat
+        if (data.config) {
+          startHeartbeat(data.config);
         }
+        // update web修改数据响应
+        if (data.deviceid && data.error === 0) {
+            thingStore.setThingSwitch(data.deviceid);
+        }
+        // // update server推送数据
+        if (data.deviceid && data.params.switches) {
+            thingStore.setThingSwitch(data.deviceid, data.params.switches);
+          }
+        // sysmsg
         if (data.action === "sysmsg") {
-            thingStore.setThingOnline(data.deviceid, data.params.online)
+          thingStore.setThingOnline(data.deviceid, data.params.online);
         }
-      } catch {
-        
-      }
+      } catch {}
     };
 
     wsInstance.value.onerror = (e) => {

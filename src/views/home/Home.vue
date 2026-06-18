@@ -12,7 +12,6 @@ import Thing from "./components/Thing.vue";
 import TingModel from '@/views/home/components/thingModel.vue'
 import type { ThingListItem } from './types.ts';
 
-
 const router = useRouter();
 const userStore = useUserStore();
 const familyStore = useFamilyStore();
@@ -51,8 +50,8 @@ const logout = async () => {
   // });
   // const res = await data.json();
   // if (res.error === 0) {
-    userStore.clearUserInfo();
-    router.push("/login");
+  userStore.clearUserInfo();
+  router.push("/login");
   // } else {
   //   ElMessage({
   //     type: "error",
@@ -63,22 +62,25 @@ const logout = async () => {
 
 const thingDialogVisible = ref(false);
 const currentThing = ref<ThingListItem | null>(null);
-  const handleOpenThingModel = (thing: ThingListItem) => {
+const handleOpenThingModel = (thing: ThingListItem) => {
   currentThing.value = thing;
   thingDialogVisible.value = true;
 };
 
 onMounted(async () => {
   thingLoading.value = true;
-  await wsStore.wsConnect();
-  await familyStore.getFamilyList();
-  if (familyListData.value?.familyList) {
-    const promises = familyListData.value.familyList.map((family) =>
-      thingStore.getTingListById(family.id),
-    );
-    await Promise.all(promises);
+  try {
+    await wsStore.wsConnect();
+    await familyStore.getFamilyList();
+    if (familyListData.value?.familyList) {
+      const promises = familyListData.value.familyList.map((family) =>
+        thingStore.getTingListById(family.id),
+      );
+      await Promise.all(promises);
+    }
+  } finally {
+    thingLoading.value = false;
   }
-  thingLoading.value = false;
 });
 </script>
 
@@ -88,70 +90,37 @@ onMounted(async () => {
       <div class="text-center text-[24px] font-bold mt-[12px]">Demo</div>
       <div class="mt-[20px] mb-[20px] h-0 flex-1 overflow-auto">
         <el-anchor :container="contentRef">
-          <el-anchor-link
-            v-for="family in familyListData?.familyList"
-            :key="family.id"
-            :href="`#${family.id}`"
-          >
+          <el-anchor-link v-for="family in familyListData?.familyList" :key="family.id" :href="`#${family.id}`">
             {{ family.name }}
             <template #sub-link>
-              <el-anchor-link
-                v-if="getDeclareThings(family.id).length > 0"
-                :href="`#${family.id}-unDeclare`"
-                >未分配</el-anchor-link
-              >
-              <el-anchor-link
-                v-for="room in family.roomList"
-                :key="room.id"
-                :href="`#${room.id}`"
-              >
+              <el-anchor-link v-if="getDeclareThings(family.id).length > 0"
+                :href="`#${family.id}-unDeclare`">未分配</el-anchor-link>
+              <el-anchor-link v-for="room in family.roomList" :key="room.id" :href="`#${room.id}`">
                 {{ room.name }}
               </el-anchor-link>
             </template>
           </el-anchor-link>
         </el-anchor>
       </div>
-      <el-button class="w-full" @click="dialogVisible = true"
-        >退出登录</el-button
-      >
+      <el-button class="w-full" @click="dialogVisible = true">退出登录</el-button>
     </div>
     <div class="content" ref="contentRef">
-      <div
-        :id="family.id"
-        class="room pt-[20px]"
-        v-for="family in familyListData?.familyList"
-        :key="family.id"
-      >
+      <div :id="family.id" class="room pt-[20px]" v-for="family in familyListData?.familyList" :key="family.id">
         <div class="text-[20px] font-bold">{{ family.name }}</div>
         <!-- 处理未分配情况 -->
-        <div
-          v-if="getDeclareThings(family.id).length > 0"
-          :id="`${family.id}-unDeclare`"
-          class="mt-[20px]"
-        >
+        <div v-if="getDeclareThings(family.id).length > 0" :id="`${family.id}-unDeclare`" class="mt-[20px]">
           <div class="text-[20px]">未分配</div>
           <div class="flex gap-[24px] mt-[12px] flex-wrap">
-            <Thing
-              v-for="thing in getDeclareThings(family.id)"
-              :key="thing.itemData.deviceid"
-              :thing="thing"
-              @click="handleOpenThingModel(thing)"
-            />
+            <Thing v-for="thing in getDeclareThings(family.id)" :key="thing.itemData.deviceid" :thing="thing"
+              @click="handleOpenThingModel(thing)" />
           </div>
         </div>
 
         <div :id="room.id" class="mt-[20px]" v-for="room in family.roomList">
           <div class="text-[20px]">{{ room.name }}</div>
-          <div
-            v-if="getTingByRoom(family.id, room.id).length > 0"
-            class="flex gap-[24px] mt-[12px] flex-wrap"
-          >
-            <Thing
-              v-for="thing in getTingByRoom(family.id, room.id)"
-              :key="thing.itemData.deviceid"
-              :thing="thing"
-              @click="handleOpenThingModel(thing)"
-            />
+          <div v-if="getTingByRoom(family.id, room.id).length > 0" class="flex gap-[24px] mt-[12px] flex-wrap">
+            <Thing v-for="thing in getTingByRoom(family.id, room.id)" :key="thing.itemData.deviceid" :thing="thing"
+              @click="handleOpenThingModel(thing)" />
           </div>
 
           <NoTing v-else />
@@ -169,8 +138,7 @@ onMounted(async () => {
       </div>
     </template>
   </el-dialog>
-  <TingModel v-model="thingDialogVisible" 
-    :thing="currentThing"  />
+  <TingModel v-model="thingDialogVisible" :thing="currentThing" />
 </template>
 
 <style scoped lang="scss">

@@ -88,7 +88,7 @@ const changeSwitch = (outlet: number, val: boolean) => {
                 </div>
             </div>
         </template>
-        <div v-else class="text-center align-middle">
+        <div v-else class="text-center">
             设备离线，请检查设备状态
         </div>
     </el-dialog>

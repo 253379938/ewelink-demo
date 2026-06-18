@@ -39,11 +39,11 @@ export const useThingStore = defineStore('thing', () => {
 
     return currentThing;
   }
-  const setThingSwitch = (deviceid: string) => {
+  const setThingSwitch = (deviceid: string, switches?: SwitchItem[]) => {
     const currentThing = getThingById(deviceid);
     if (!currentThing) return;
-    if(updateSwitches.value.length === 0) return;
-    currentThing.itemData.params.switches = updateSwitches.value;
+    if(switches?.length === 0 && updateSwitches.value.length === 0) return;
+    currentThing.itemData.params.switches = switches || updateSwitches.value;
   }
   const setThingOnline = (deviceid: string, online: boolean) => { 
     const currentThing = getThingById(deviceid);
