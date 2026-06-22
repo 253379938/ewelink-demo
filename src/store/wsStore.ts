@@ -147,6 +147,7 @@ export const useWsStore = defineStore("ws", () => {
     wsInstance.value.onopen = () => {
       console.log("ws connect");
       isReconnect = false;
+      retryCount = 0;
       initSend();
     };
 

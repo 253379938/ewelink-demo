@@ -76,7 +76,7 @@ const changeSwitch = (outlet: number, val: boolean) => {
     <el-dialog v-model="modelValue" :title="deviceName" width="420" align-center>
         <template v-if="isOnline">
             <div class="p-[8px]">
-                <el-switch v-model="allSwitchStatus" inline-prompt active-text="全开" inactive-text="全关" size="large"
+                <el-switch :model-value="allSwitchStatus" inline-prompt active-text="全开" inactive-text="全关" size="large"
                     @change="changeAll" />
             </div>
             <div class="flex flex-wrap">
