@@ -125,6 +125,7 @@ export const useWsStore = defineStore("ws", () => {
 
   // 重连
   const retryConnect = () => {
+    console.log('retry connect');
     if (isReconnect) return;
     retryCount++;
     isReconnect = true;
@@ -165,6 +166,7 @@ export const useWsStore = defineStore("ws", () => {
         // update web修改数据响应
         if (data.deviceid && data.error === 0) {
           thingStore.setThingSwitch(data.deviceid);
+          thingStore.updateLoading = false;
         }
         // // update server推送数据
         if (data.deviceid && data.params.switches) {

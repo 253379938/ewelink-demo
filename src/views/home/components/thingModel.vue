@@ -43,6 +43,7 @@ const changeAll = (val: boolean) => {
         userAgent: 'app',
         sequence: Date.now(),
     }));
+    thingStore.updateLoading = true;
 }
 const changeSwitch = (outlet: number, val: boolean) => {
     const params: { switches: SwitchItem[] } = {
@@ -68,13 +69,14 @@ const changeSwitch = (outlet: number, val: boolean) => {
         userAgent: 'app',
         sequence: Date.now(),
     }));
+    thingStore.updateLoading = true;
 }
 
 </script>
 
 <template>
     <el-dialog v-model="modelValue" :title="deviceName" width="420" align-center>
-        <template v-if="isOnline">
+        <div v-if="isOnline" v-loading="thingStore.updateLoading" >
             <div class="p-[8px]">
                 <el-switch :model-value="allSwitchStatus" inline-prompt active-text="全开" inactive-text="全关" size="large"
                     @change="changeAll" />
@@ -87,7 +89,7 @@ const changeSwitch = (outlet: number, val: boolean) => {
                     <span class="font-bold">通道{{ item.outlet + 1 }}</span>
                 </div>
             </div>
-        </template>
+        </div>
         <div v-else class="text-center">
             设备离线，请检查设备状态
         </div>
