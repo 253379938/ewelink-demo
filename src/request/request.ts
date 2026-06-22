@@ -1,34 +1,38 @@
-import axios from 'axios';
-import { appid } from '@/constants';
+import axios from "axios";
+import { appid } from "@/constants";
 
 const request = axios.create({
-  baseURL: '/api',
+  baseURL: "/api",
   timeout: 5000,
 });
 
-request.interceptors.request.use(
-  (config) => {
-    config.headers['X-CK-Appid'] = appid;
+request.interceptors.request.use((config) => {
+  config.headers["X-CK-Appid"] = appid;
 
-    const accessToken = localStorage.getItem('accessToken');
-    if (accessToken) {
-      config.headers['Authorization'] = `Bearer ${accessToken}`;
-    }
+  const accessToken = localStorage.getItem("accessToken");
+  if (accessToken) {
+    config.headers["Authorization"] = `Bearer ${accessToken}`;
+  }
 
-    return config;
-  },
-);
+  return config;
+});
 
-request.interceptors.response.use(
-  (response) => {
-    const res = response.data;
-      if (res.error !== 0) {
+request.interceptors.response.use((response) => {
+  const res = response.data;
+  if (res.error !== 0) {
+    // if (res.error === 402) {
+    //   // refresh
+    //   const res = axios.post("/v2/user/refresh", {
+    //     rt: localStorage.getItem("refreshToken"),
+    //   });
+    //   const { at, rt } = res;
+    // } else {
       console.error(res.msg);
       throw new Error(res.msg);
-    } else {
-      return res;
-    }
-  },
-);
+    // }
+  } else {
+    return res;
+  }
+});
 
 export default request;

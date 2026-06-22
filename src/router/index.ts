@@ -22,20 +22,20 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const token = localStorage.getItem('accessToken');
 
   if (to.meta.requiresAuth) {
     if (token) {
-      next();
+      return true;
     } else {
-      next('/login');
+      return('/login');
     }
   } else {
     if (to.path === '/login' && token) {
-      next('/home');
+      return('/home');
     } else {
-      next();
+      return true;
     }
   }
 });

@@ -32,7 +32,17 @@ export const useWsStore = defineStore("ws", () => {
   const wsInstance = ref<WebSocket | null>(null);
   const userStore = useUserStore();
   const thingStore = useThingStore();
+
+  const pongTimeOut = 3000;
+  let retryCount = 0;
+  const retryTimeOut = 3000;
+  const maxRetryTimeOut = 30000;
+
   let heartbeatTimer: number | null = null;
+  let pongTimeoutTimer: number | null = null;
+
+  let reconnectTimer: number | null = null;
+  let isReconnect = false;
 
   // 分配 url
   const getWsUrl = async () => {
@@ -75,7 +85,11 @@ export const useWsStore = defineStore("ws", () => {
 
         heartbeatTimer = setInterval(() => {
           if (wsInstance.value) {
+            clearPongTimeout();
             wsInstance.value.send("ping");
+            pongTimeoutTimer = setTimeout(() => {
+              wsInstance.value?.close();
+            }, pongTimeOut);
           } else {
             stopHeartbeat();
           }
@@ -91,8 +105,39 @@ export const useWsStore = defineStore("ws", () => {
       heartbeatTimer = null;
     }
   };
+  const clearPongTimeout = () => {
+    if (pongTimeoutTimer) {
+      clearTimeout(pongTimeoutTimer);
+      pongTimeoutTimer = null;
+    }
+  };
+
+  // logout 关闭 ws
+  const closeWs = () => {
+    stopHeartbeat();
+    clearPongTimeout();
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    if (wsInstance.value) {
+      wsInstance.value.close(1000, "logout");
+      wsInstance.value = null;
+    }
+  };
+
+  // 重连
+  const retryConnect = () => {
+    if (isReconnect) return;
+    retryCount++;
+    isReconnect = true;
+    let delay = retryTimeOut * Math.pow(2, retryCount - 1);
+    delay = Math.min(delay, maxRetryTimeOut);
+    reconnectTimer = setTimeout(async () => {
+      wsUrlBase.value = null;
+      await wsConnect();
+    }, delay);
+  };
+
   const wsConnect = async () => {
-    if (wsInstance.value) return;
+    if (wsInstance.value || isReconnect) return;
     if (!wsUrlBase.value) {
       await getWsUrl();
     }
@@ -101,11 +146,15 @@ export const useWsStore = defineStore("ws", () => {
 
     wsInstance.value.onopen = () => {
       console.log("ws connect");
+      isReconnect = false;
       initSend();
     };
 
     wsInstance.value.onmessage = (e) => {
-      if (e.data === "pong") return;
+      if (e.data === "pong") {
+        clearPongTimeout();
+        return;
+      }
       try {
         const data = JSON.parse(e.data);
         // heartBeat
@@ -114,12 +163,12 @@ export const useWsStore = defineStore("ws", () => {
         }
         // update web修改数据响应
         if (data.deviceid && data.error === 0) {
-            thingStore.setThingSwitch(data.deviceid);
+          thingStore.setThingSwitch(data.deviceid);
         }
         // // update server推送数据
         if (data.deviceid && data.params.switches) {
-            thingStore.setThingSwitch(data.deviceid, data.params.switches);
-          }
+          thingStore.setThingSwitch(data.deviceid, data.params.switches);
+        }
         // sysmsg
         if (data.action === "sysmsg") {
           thingStore.setThingOnline(data.deviceid, data.params.online);
@@ -133,11 +182,19 @@ export const useWsStore = defineStore("ws", () => {
 
     wsInstance.value.onclose = (e) => {
       console.warn(`ws close`, e);
+      stopHeartbeat();
+      clearPongTimeout();
       wsInstance.value = null;
+
+      if (e.code === 1000) return;
+
+      // 尝试重连
+      retryConnect();
     };
   };
   return {
     wsInstance,
     wsConnect,
+    closeWs,
   };
 });

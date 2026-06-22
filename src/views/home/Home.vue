@@ -41,6 +41,7 @@ const getDeclareThings = (familyId: string) => {
 const logout = async () => {
   userStore.clearUserInfo();
   router.push("/login");
+  wsStore.closeWs();
 };
 
 const thingDialogVisible = ref(false);
