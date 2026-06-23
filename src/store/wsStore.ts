@@ -46,15 +46,15 @@ export const useWsStore = defineStore("ws", () => {
 
   // 分配 url
   const getWsUrl = async () => {
-    const data = await fetch("https://cn-dispa.coolkit.cn/dispatch/app", {
-      method: "GET",
-    });
-    const res = await data.json();
-    if (res.error === 0) {
-      wsUrlBase.value = res;
-    } else {
-      throw new Error(res.msg);
-    }
+    try {
+      const data = await fetch("https://cn-dispa.coolkit.cn/dispatch/app", {
+        method: "GET",
+      });
+      const res = await data.json();
+      if (res.error === 0) {
+        wsUrlBase.value = res;
+      }
+    } catch {}
   };
 
   // 握手获取 HeartbeatConfig
@@ -168,75 +168,83 @@ export const useWsStore = defineStore("ws", () => {
 
   const wsConnect = () => {
     return new Promise(async (resolve, reject) => {
-      if (wsInstance.value) {
-        return reject(new Error("已存在 ws 实例"));
-      }
-      if (!wsUrlBase.value) {
-        await getWsUrl();
-      }
-      const wsUrl = `wss://${wsUrlBase.value?.domain}:${wsUrlBase.value?.port}/api/ws`;
-      wsInstance.value = new WebSocket(wsUrl);
-
-      wsInstance.value.onopen = () => {
-        console.log("ws connect");
-        isReconnect = false;
-        retryCount = 0;
-        initSend();
-        resolve(wsInstance.value);
-      };
-
-      wsInstance.value.onmessage = (e) => {
-        if (e.data === "pong") {
-          clearPongTimeout();
-          return;
+      try {
+        if (wsInstance.value) {
+          return reject(new Error("ws instance existed"));
         }
-        try {
-          const data = JSON.parse(e.data);
-          // heartBeat
-          if (data.config) {
-            startHeartbeat(data.config);
-          }
-          // update web修改数据响应
-          if (pendingMap.has(data.sequence)) {
-            const item = pendingMap.get(data.sequence)!;
-            clearTimeout(item.timer);
-            pendingMap.delete(data.sequence);
-            item.resolve(data);
+        if (!wsUrlBase.value) {
+          await getWsUrl();
+        }
+        const wsUrl = `wss://${wsUrlBase.value?.domain}:${wsUrlBase.value?.port}/api/ws`;
+        wsInstance.value = new WebSocket(wsUrl);
+
+        wsInstance.value.onopen = () => {
+          console.log("ws connect");
+          isReconnect = false;
+          retryCount = 0;
+          initSend();
+          resolve(wsInstance.value);
+        };
+
+        wsInstance.value.onmessage = (e) => {
+          if (e.data === "pong") {
+            clearPongTimeout();
             return;
           }
-          // // update server推送数据
-          if (
-            data.action === "update" &&
-            data.deviceid &&
-            data.params.switches
-          ) {
-            thingStore.setThingSwitch(data.deviceid, data.params.switches);
-          }
-          // sysmsg
-          if (data.action === "sysmsg") {
-            thingStore.setThingOnline(data.deviceid, data.params.online);
-          }
-        } catch {}
-      };
+          try {
+            const data = JSON.parse(e.data);
+            // heartBeat
+            if (data.config) {
+              startHeartbeat(data.config);
+            }
+            // update web修改数据响应
+            if (pendingMap.has(data.sequence)) {
+              const item = pendingMap.get(data.sequence)!;
+              clearTimeout(item.timer);
+              pendingMap.delete(data.sequence);
+              item.resolve(data);
+              return;
+            }
+            // // update server推送数据
+            if (
+              data.action === "update" &&
+              data.deviceid &&
+              data.params.switches
+            ) {
+              thingStore.setThingSwitch(data.deviceid, data.params.switches);
+            }
+            // sysmsg
+            if (data.action === "sysmsg") {
+              thingStore.setThingOnline(data.deviceid, data.params.online);
+            }
+          } catch {}
+        };
 
-      wsInstance.value.onerror = (e) => {
-        console.error("ws error", e);
-        reject(e);
-      };
+        wsInstance.value.onerror = (e) => {
+          console.error("ws error", e);
+          reject(e);
+        };
 
-      wsInstance.value.onclose = (e) => {
-        console.warn(`ws close`, e);
-        stopHeartbeat();
-        clearPongTimeout();
-        wsInstance.value = null;
+        wsInstance.value.onclose = (e) => {
+          console.warn(`ws close`, e);
+          stopHeartbeat();
+          clearPongTimeout();
 
-        if (e.code === 1000) return;
+          pendingMap.forEach((item) => {
+            clearTimeout(item.timer);
+          });
+          pendingMap.clear();
 
-        // 尝试重连
-        reject(e);
-        retryConnect();
-      };
-      // });
+          wsInstance.value = null;
+          if (e.code === 1000) return;
+
+          // 尝试重连
+          reject(e);
+          retryConnect();
+        };
+      } catch (err) {
+        reject(err);
+      }
     });
   };
   return {
