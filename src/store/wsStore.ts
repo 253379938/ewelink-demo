@@ -116,6 +116,10 @@ export const useWsStore = defineStore("ws", () => {
   const closeWs = () => {
     stopHeartbeat();
     clearPongTimeout();
+
+    pendingMap.forEach((item) => clearTimeout(item.timer));
+    pendingMap.clear();
+
     if (reconnectTimer) clearTimeout(reconnectTimer);
     isReconnect = false;
     retryCount = 0;
@@ -142,6 +146,24 @@ export const useWsStore = defineStore("ws", () => {
         retryConnect();
       }
     }, delay);
+  };
+
+  // update switches sendPromise
+  const pendingMap = new Map<string, { resolve: Function; timer: number }>();
+  const updateTimeOut = 5000;
+  const updateSwitches = (data: Record<string, any>) => {
+    return new Promise(
+      (resolve: (value: Record<string, any>) => void, reject) => {
+        if (!wsInstance.value) return reject(new Error("ws no exist"));
+        const sequence = String(data.sequence);
+        const timer = setTimeout(() => {
+          pendingMap.delete(sequence);
+          reject(new Error("switches update timeout"));
+        }, updateTimeOut);
+        pendingMap.set(sequence, { resolve, timer });
+        wsInstance.value.send(JSON.stringify(data));
+      },
+    );
   };
 
   const wsConnect = () => {
@@ -175,9 +197,12 @@ export const useWsStore = defineStore("ws", () => {
             startHeartbeat(data.config);
           }
           // update web修改数据响应
-          if (data.deviceid && data.error === 0) {
-            thingStore.setThingSwitch(data.deviceid);
-            thingStore.updateLoading = false;
+          if (pendingMap.has(data.sequence)) {
+            const item = pendingMap.get(data.sequence)!;
+            clearTimeout(item.timer);
+            pendingMap.delete(data.sequence);
+            item.resolve(data);
+            return;
           }
           // // update server推送数据
           if (
@@ -218,5 +243,6 @@ export const useWsStore = defineStore("ws", () => {
     wsInstance,
     wsConnect,
     closeWs,
+    updateSwitches,
   };
 });

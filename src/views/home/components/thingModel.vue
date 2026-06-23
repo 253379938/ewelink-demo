@@ -24,7 +24,7 @@ const allSwitchStatus = computed(() => {
     }
 });
 
-const changeAll = (val: boolean) => {
+const changeAll = async (val: boolean) => {
     const params: { switches: SwitchItem[] } = {
         switches: switches.value?.map((item) => ({
             outlet: item.outlet,
@@ -35,17 +35,26 @@ const changeAll = (val: boolean) => {
         throw new Error('wsInstance is null');
     };
     thingStore.updateSwitches = params.switches;
-    wsStore.wsInstance.send(JSON.stringify({
-        action: 'update',
-        apikey: userStore.userData?.user.apikey,
-        deviceid: props.thing?.itemData?.deviceid,
-        params: params,
-        userAgent: 'app',
-        sequence: Date.now(),
-    }));
     thingStore.updateLoading = true;
+    try {
+        const res = await wsStore.updateSwitches({
+            action: 'update',
+            apikey: userStore.userData?.user.apikey,
+            deviceid: props.thing?.itemData?.deviceid,
+            params: params,
+            userAgent: 'app',
+            sequence: Date.now(),
+        })
+        if (res.deviceid && res.error === 0) {
+            thingStore.setThingSwitch(res.deviceid);
+        }
+    } catch (err) {
+        console.error(err);
+    } finally {
+        thingStore.updateLoading = false;
+    }
 }
-const changeSwitch = (outlet: number, val: boolean) => {
+const changeSwitch = async (outlet: number, val: boolean) => {
     const params: { switches: SwitchItem[] } = {
         switches: switches.value?.map((item) => {
             if (item.outlet === outlet) {
@@ -61,22 +70,31 @@ const changeSwitch = (outlet: number, val: boolean) => {
     if (!wsStore.wsInstance) {
         throw new Error('wsInstance is null');
     };
-    wsStore.wsInstance.send(JSON.stringify({
-        action: 'update',
-        apikey: userStore.userData?.user.apikey,
-        deviceid: props.thing?.itemData?.deviceid,
-        params: params,
-        userAgent: 'app',
-        sequence: Date.now(),
-    }));
     thingStore.updateLoading = true;
+    try {
+        const res = await wsStore.updateSwitches({
+            action: 'update',
+            apikey: userStore.userData?.user.apikey,
+            deviceid: props.thing?.itemData?.deviceid,
+            params: params,
+            userAgent: 'app',
+            sequence: Date.now(),
+        })
+        if (res.deviceid && res.error === 0) {
+            thingStore.setThingSwitch(res.deviceid);
+        }
+    } catch (err) {
+        console.error(err);
+    } finally {
+        thingStore.updateLoading = false;
+    }
 }
 
 </script>
 
 <template>
     <el-dialog v-model="modelValue" :title="deviceName" width="420" align-center>
-        <div v-if="isOnline" v-loading="thingStore.updateLoading" >
+        <div v-if="isOnline" v-loading="thingStore.updateLoading">
             <div class="p-[8px]">
                 <el-switch :model-value="allSwitchStatus" inline-prompt active-text="全开" inactive-text="全关" size="large"
                     @change="changeAll" />
