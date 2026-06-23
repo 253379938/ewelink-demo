@@ -57,7 +57,7 @@ export const useWsStore = defineStore("ws", () => {
     }
   };
 
-  // 连接后 initMsg 获取 heartbeatTime
+  // 握手获取 HeartbeatConfig
   const initSend = () => {
     if (!wsInstance.value) return;
     wsInstance.value.send(
@@ -117,6 +117,8 @@ export const useWsStore = defineStore("ws", () => {
     stopHeartbeat();
     clearPongTimeout();
     if (reconnectTimer) clearTimeout(reconnectTimer);
+    isReconnect = false;
+    retryCount = 0;
     if (wsInstance.value) {
       wsInstance.value.close(1000, "logout");
       wsInstance.value = null;
@@ -125,75 +127,92 @@ export const useWsStore = defineStore("ws", () => {
 
   // 重连
   const retryConnect = () => {
-    console.log('retry connect');
+    console.log("retry connect");
     if (isReconnect) return;
     retryCount++;
     isReconnect = true;
     let delay = retryTimeOut * Math.pow(2, retryCount - 1);
     delay = Math.min(delay, maxRetryTimeOut);
     reconnectTimer = setTimeout(async () => {
-      wsUrlBase.value = null;
-      await wsConnect();
+      try {
+        isReconnect = false;
+        wsUrlBase.value = null;
+        await wsConnect();
+      } catch (err) {
+        retryConnect();
+      }
     }, delay);
   };
 
-  const wsConnect = async () => {
-    if (wsInstance.value || isReconnect) return;
-    if (!wsUrlBase.value) {
-      await getWsUrl();
-    }
-    const wsUrl = `wss://${wsUrlBase.value?.domain}:${wsUrlBase.value?.port}/api/ws`;
-    wsInstance.value = new WebSocket(wsUrl);
-
-    wsInstance.value.onopen = () => {
-      console.log("ws connect");
-      isReconnect = false;
-      retryCount = 0;
-      initSend();
-    };
-
-    wsInstance.value.onmessage = (e) => {
-      if (e.data === "pong") {
-        clearPongTimeout();
-        return;
+  const wsConnect = () => {
+    return new Promise(async (resolve, reject) => {
+      if (wsInstance.value) {
+        return reject(new Error("已存在 ws 实例"));
       }
-      try {
-        const data = JSON.parse(e.data);
-        // heartBeat
-        if (data.config) {
-          startHeartbeat(data.config);
-        }
-        // update web修改数据响应
-        if (data.deviceid && data.error === 0) {
-          thingStore.setThingSwitch(data.deviceid);
-          thingStore.updateLoading = false;
-        }
-        // // update server推送数据
-        if (data.deviceid && data.params.switches) {
-          thingStore.setThingSwitch(data.deviceid, data.params.switches);
-        }
-        // sysmsg
-        if (data.action === "sysmsg") {
-          thingStore.setThingOnline(data.deviceid, data.params.online);
-        }
-      } catch {}
-    };
+      if (!wsUrlBase.value) {
+        await getWsUrl();
+      }
+      const wsUrl = `wss://${wsUrlBase.value?.domain}:${wsUrlBase.value?.port}/api/ws`;
+      wsInstance.value = new WebSocket(wsUrl);
 
-    wsInstance.value.onerror = (e) => {
-      console.error("ws error", e);
-    };
+      wsInstance.value.onopen = () => {
+        console.log("ws connect");
+        isReconnect = false;
+        retryCount = 0;
+        initSend();
+        resolve(wsInstance.value);
+      };
 
-    wsInstance.value.onclose = (e) => {
-      console.warn(`ws close`, e);
-      stopHeartbeat();
-      clearPongTimeout();
-      wsInstance.value = null;
+      wsInstance.value.onmessage = (e) => {
+        if (e.data === "pong") {
+          clearPongTimeout();
+          return;
+        }
+        try {
+          const data = JSON.parse(e.data);
+          // heartBeat
+          if (data.config) {
+            startHeartbeat(data.config);
+          }
+          // update web修改数据响应
+          if (data.deviceid && data.error === 0) {
+            thingStore.setThingSwitch(data.deviceid);
+            thingStore.updateLoading = false;
+          }
+          // // update server推送数据
+          if (
+            data.action === "update" &&
+            data.deviceid &&
+            data.params.switches
+          ) {
+            thingStore.setThingSwitch(data.deviceid, data.params.switches);
+          }
+          // sysmsg
+          if (data.action === "sysmsg") {
+            thingStore.setThingOnline(data.deviceid, data.params.online);
+          }
+        } catch {}
+      };
 
-      if (e.code === 1000) return;
+      wsInstance.value.onerror = (e) => {
+        console.error("ws error", e);
+        reject(e);
+      };
 
-      // 尝试重连
-      retryConnect();
-    };
+      wsInstance.value.onclose = (e) => {
+        console.warn(`ws close`, e);
+        stopHeartbeat();
+        clearPongTimeout();
+        wsInstance.value = null;
+
+        if (e.code === 1000) return;
+
+        // 尝试重连
+        reject(e);
+        retryConnect();
+      };
+      // });
+    });
   };
   return {
     wsInstance,

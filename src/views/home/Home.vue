@@ -60,7 +60,7 @@ onMounted(async () => {
       const promises = familyListData.value.familyList.map((family) =>
         thingStore.getTingListById(family.id),
       );
-      await Promise.all(promises);
+      await Promise.allSettled(promises);
     }
   } finally {
     thingLoading.value = false;

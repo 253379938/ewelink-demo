@@ -6,6 +6,7 @@ import crypto from 'crypto-js'
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/store/userStore'
 import request from '@/request/request'
+import { ElMessage } from 'element-plus';
 
 const regionLabel = reactive<RegionInfo[]>(regionMapMerge);
 const accountForm = reactive<{ countryCode: string; phoneNumber: string; password: string }>({
@@ -34,7 +35,8 @@ const login = async () => {
         });
         userStore.setUserInfo(res.data);
         router.push('/home');
-    } catch {
+    } catch (err) {
+        ElMessage.error(String(err))
     }
 }
 </script>

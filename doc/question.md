@@ -2,8 +2,7 @@
 
 1. 不同地区服务域名有什么不同
    
-   1. 不同地区走不同服务器，降低网络延迟
-   2. 各区域网络数据需要存储到对应区域的服务器
+    顶级服务器域名国内为 .cn 需要 ICP 备案，国外为 .cc。三级域名国内为 .cn-apia，国外为对应地区缩写 + apia。
    
 2. 连接 websocket 的时候，为什么要先通过一个接口获取到连接地址
    
@@ -13,7 +12,8 @@
    
 3. 怎么判断设备有4个通道
    
-    返回的 thingList 的每一项 thing 存在 itemData 属性，itemData.params.switches.length === 4 代表四个开关
+    返回的 thingList 的每一项 thing 存在 itemData 属性，itemData.extra.uuid === 4 
+    或者 itemData.params.switches.length === 4 代表四个开关
 
 4. 请求登陆接口时，用到的加密属于什么加密？常见的加密有哪些类型？
    

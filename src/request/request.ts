@@ -1,10 +1,14 @@
 import axios from "axios";
 import { appid } from "@/constants";
+import { useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
 
 const request = axios.create({
   baseURL: "/api",
   timeout: 5000,
 });
+
+const router = useRouter();
 
 request.interceptors.request.use((config) => {
   config.headers["X-CK-Appid"] = appid;
@@ -27,6 +31,12 @@ request.interceptors.response.use((response) => {
     //   });
     //   const { at, rt } = res;
     // } else {
+    if (res.error === 401) {
+      ElMessage.warning('该账号被他人登录')
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      router.push('/login')
+    }
       console.error(res.msg);
       throw new Error(res.msg);
     // }
