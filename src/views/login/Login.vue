@@ -36,7 +36,6 @@ const login = async () => {
         userStore.setUserInfo(res.data);
         router.push('/home');
     } catch (err) {
-        ElMessage.error(String(err))
     }
 }
 </script>

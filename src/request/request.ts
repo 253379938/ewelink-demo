@@ -21,6 +21,15 @@ request.interceptors.request.use((config) => {
   return config;
 });
 
+const errorCodeMap: Record<number, string> = {
+  10001: "登录密码错误",
+  10002: "验证码错误",
+  10003: "用户不存在",
+  10004: "登录的用户不在本区域",
+  10009: "账号已被注册",
+  10010: "验证码发送频率过快，请稍后再试",
+};
+
 request.interceptors.response.use((response) => {
   const res = response.data;
   if (res.error !== 0) {
@@ -32,13 +41,14 @@ request.interceptors.response.use((response) => {
     //   const { at, rt } = res;
     // } else {
     if (res.error === 401) {
-      ElMessage.warning('该账号被他人登录')
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      router.push('/login')
+      ElMessage.warning("该账号被他人登录");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      router.push("/login");
+    } else if (errorCodeMap[res.error]) {
+      ElMessage.error(errorCodeMap[res.error]);
     }
-      console.error(res.msg);
-      throw new Error(res.msg);
+    throw new Error(res.msg);
     // }
   } else {
     return res;
