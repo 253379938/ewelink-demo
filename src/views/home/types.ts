@@ -61,6 +61,7 @@ export type DeviceParams = {
   staMac: string;
   switches: SwitchItem[];
   TZ: string;
+  [key: string]: any;
 };
 
 export type DeviceExtra = {

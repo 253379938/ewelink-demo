@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from "vue";
+import { defineAsyncComponent, onMounted, ref, computed, onUnmounted } from "vue";
 import NoTing from "@/components/NoTing.vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/store/userStore";
@@ -7,8 +7,11 @@ import { useFamilyStore } from "@/store/home/familyStore";
 import { useThingStore } from "@/store/home/thingStore";
 import { useWsStore } from "@/store/wsStore";
 import Thing from "./components/Thing.vue";
-import TingModel from '@/views/home/components/thingModel.vue'
 import type { ThingListItem } from './types.ts';
+import thirdpartyModel from "./components/thirdparty/thirdpartyModel.vue";
+import UnSupportDeviceModel from "./components/device/UnSupportDeviceModel.vue";
+import { getThirdpartyMap } from "@/api/open-api/thirdparty.ts";
+import { closeSse, connectControlSse } from "@/utils/sse.ts";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -21,7 +24,11 @@ const familyListData = computed(() => familyStore.familyListData);
 const contentRef = ref<HTMLElement | null>(null);
 
 const dialogVisible = ref<boolean>(false);
+const deviceDialogVisible = ref<boolean>(false);
+const thirdpartyDialogVisible = ref<boolean>(false);
+
 const thingLoading = ref<boolean>(false);
+const thirdpartyMap = ref<Array<{ device_id: string; ihost_serial: string; uiid: string }> | []>([]);
 
 // 获取指定 room 的 thing
 const getTingByRoom = (familyId: string, roomId: string) => {
@@ -44,17 +51,45 @@ const logout = async () => {
   wsStore.closeWs();
 };
 
-const thingDialogVisible = ref(false);
 const currentThing = ref<ThingListItem | null>(null);
+
+// uiid 加载 model
+const supportUIID = ['4', '7017']
+const currentDeviceModel = computed(() => {
+  const uiid = String(currentThing.value?.itemData.extra?.uiid);
+  if (!uiid || !supportUIID.includes(uiid)) return UnSupportDeviceModel;
+  return defineAsyncComponent(() => import(`./components/device/uuid${uiid}/ThingModel.vue`));
+});
+
 const handleOpenThingModel = (thing: ThingListItem) => {
   currentThing.value = thing;
-  thingDialogVisible.value = true;
+  deviceDialogVisible.value = true;
 };
+
+// 打开 iHost 凭证弹窗
+const handleOpenThirdparty = (thing: ThingListItem) => {
+  currentThing.value = thing;
+  thirdpartyDialogVisible.value = true;
+};
+
+// 设备同步映射
+const getDeviceMap = async () => {
+  const eWelinkAt = localStorage.getItem('accessToken');
+  const iHost = localStorage.getItem('iHost');
+  const at = localStorage.getItem('iHostToken');
+  if (eWelinkAt && iHost && at) {
+    const res = await getThirdpartyMap( iHost, at);
+    thirdpartyMap.value = res.data.newMap || [];
+  }
+}
 
 onMounted(async () => {
   thingLoading.value = true;
   try {
     await wsStore.wsConnect();
+    // 连接 express SSE，接收 iHost 回调
+    connectControlSse();
+    await getDeviceMap();
     await familyStore.getFamilyList();
     if (familyListData.value?.familyList) {
       const promises = familyListData.value.familyList.map((family) =>
@@ -66,6 +101,11 @@ onMounted(async () => {
     thingLoading.value = false;
   }
 });
+
+onUnmounted(() => {
+  closeSse();
+})
+
 </script>
 
 <template>
@@ -96,7 +136,8 @@ onMounted(async () => {
           <div class="text-[20px]">未分配</div>
           <div class="flex gap-[24px] mt-[12px] flex-wrap">
             <Thing v-for="thing in getDeclareThings(family.id)" :key="thing.itemData.deviceid" :thing="thing"
-              @click="handleOpenThingModel(thing)" />
+              :thirdpart-map="thirdpartyMap" @click="handleOpenThingModel(thing)"
+              @open-thirdparty="handleOpenThirdparty" />
           </div>
         </div>
 
@@ -104,7 +145,8 @@ onMounted(async () => {
           <div class="text-[20px]">{{ room.name }}</div>
           <div v-if="getTingByRoom(family.id, room.id).length > 0" class="flex gap-[24px] mt-[12px] flex-wrap">
             <Thing v-for="thing in getTingByRoom(family.id, room.id)" :key="thing.itemData.deviceid" :thing="thing"
-              @click="handleOpenThingModel(thing)" />
+              :thirdpart-map="thirdpartyMap" @click="handleOpenThingModel(thing)"
+              @open-thirdparty="handleOpenThirdparty" />
           </div>
 
           <NoTing v-else />
@@ -122,7 +164,8 @@ onMounted(async () => {
       </div>
     </template>
   </el-dialog>
-  <TingModel v-model="thingDialogVisible" :thing="currentThing" />
+  <component :is="currentDeviceModel" v-model="deviceDialogVisible" :thing="currentThing" />
+  <thirdpartyModel v-model="thirdpartyDialogVisible" :thing="currentThing" @get-map="getDeviceMap" />
 </template>
 
 <style scoped lang="scss">

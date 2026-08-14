@@ -151,7 +151,7 @@ export const useWsStore = defineStore("ws", () => {
   // update switches sendPromise
   const pendingMap = new Map<string, { resolve: Function; timer: number }>();
   const updateTimeOut = 5000;
-  const updateSwitches = (data: Record<string, any>) => {
+  const updateParams = (data: Record<string, any>) => {
     return new Promise(
       (resolve: (value: Record<string, any>) => void, reject) => {
         if (!wsInstance.value) return reject(new Error("ws no exist"));
@@ -205,13 +205,9 @@ export const useWsStore = defineStore("ws", () => {
               item.resolve(data);
               return;
             }
-            // // update server推送数据
-            if (
-              data.action === "update" &&
-              data.deviceid &&
-              data.params.switches
-            ) {
-              thingStore.setThingSwitch(data.deviceid, data.params.switches);
+            // update server推送的数据：合并
+            if (data.action === "update" && data.deviceid && data.params) {              
+              thingStore.mergeThingParams(data.deviceid, data.params);
             }
             // sysmsg
             if (data.action === "sysmsg") {
@@ -251,6 +247,6 @@ export const useWsStore = defineStore("ws", () => {
     wsInstance,
     wsConnect,
     closeWs,
-    updateSwitches,
+    updateParams,
   };
 });

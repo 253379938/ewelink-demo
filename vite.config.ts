@@ -26,6 +26,10 @@ export default defineConfig({
         target: 'https://cn-apia.coolkit.cn',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
+      },
+      '/open-api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
       }
     }
   }

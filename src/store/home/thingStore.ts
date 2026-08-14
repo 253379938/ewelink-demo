@@ -35,6 +35,14 @@ export const useThingStore = defineStore("thing", () => {
     if (switches?.length === 0 && updateSwitches.value.length === 0) return;
     currentThing.itemData.params.switches = switches || updateSwitches.value;
   };
+
+  // WS 推送的部分 params 合并
+  const mergeThingParams = (deviceid: string, params: Record<string, any>) => {
+    const currentThing = getThingById(deviceid);
+    if (!currentThing) return;
+    Object.assign(currentThing.itemData.params, params);
+  };
+
   const setThingOnline = (deviceid: string, online: boolean) => {
     const currentThing = getThingById(deviceid);
     if (!currentThing) return;
@@ -49,6 +57,7 @@ export const useThingStore = defineStore("thing", () => {
     getThingsByFamilyId,
     getThingById,
     setThingSwitch,
+    mergeThingParams,
     setThingOnline,
   };
 });

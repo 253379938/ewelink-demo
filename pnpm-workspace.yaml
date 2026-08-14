@@ -1,2 +1,6 @@
+packages:
+  - 'thirdparty-req-server'
+
 allowBuilds:
   '@parcel/watcher': false
+  esbuild: false

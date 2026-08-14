@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ThingListItem, SwitchItem } from '../types';
+import type { ThingListItem, SwitchItem } from '@/views/home/types';
 import { getSwitchStatus } from '@/utils/getSwitchStatus';
 import { useWsStore } from '@/store/wsStore'
 import { useUserStore } from '@/store/userStore'
@@ -37,7 +37,7 @@ const changeAll = async (val: boolean) => {
     thingStore.updateSwitches = params.switches;
     thingStore.updateLoading = true;
     try {
-        const res = await wsStore.updateSwitches({
+        const res = await wsStore.updateParams({
             action: 'update',
             apikey: userStore.userData?.user.apikey,
             deviceid: props.thing?.itemData?.deviceid,
@@ -72,7 +72,7 @@ const changeSwitch = async (outlet: number, val: boolean) => {
     };
     thingStore.updateLoading = true;
     try {
-        const res = await wsStore.updateSwitches({
+        const res = await wsStore.updateParams({
             action: 'update',
             apikey: userStore.userData?.user.apikey,
             deviceid: props.thing?.itemData?.deviceid,
