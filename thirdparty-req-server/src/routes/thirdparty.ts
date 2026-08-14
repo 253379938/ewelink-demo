@@ -62,17 +62,24 @@ thirdpartyRouter.post('/open-api/device/:deviceId', async (req, res, next) => {
       const params = buildEndpoint[uiid as keyof typeof buildEndpoint].stateToParams(payload.state);
       // SSE 推给前端，前端 eWeLink WS 下发控制指令
       pushSse('device-control', { deviceid: endpoint.third_serial_number, params });
+      res.json({
+        "event": {
+          "header": {
+            "name": "Response",
+            "message_id": "Unique identifier, preferably a version 4 UUID",
+            "version": "2"
+          },
+          "payload": {
+            "endpoints": [
+              {
+                "serial_number": mapping?.ihost_serial,
+                "third_serial_number": mapping?.device_id
+              }
+            ]
+          }
+        }
+      });
     }
-    res.json({
-      "event": {
-        "header": {
-          "name": "Response",
-          "message_id": "Unique identifier, preferably a version 4 UUID",
-          "version": "2"
-        },
-        "payload": {}
-      }
-    });
   } catch (err) {
     next(err);
   }
@@ -97,7 +104,7 @@ thirdpartyRouter.get('/open-api/events', (req, res) => {
 // 返回所有映射 (判断是否同步)
 thirdpartyRouter.post('/open-api/thirdparty-map', async (req, res, next) => {
   try {
-    const {  iHost, at, } = req.body ?? {};
+    const { iHost, at, } = req.body ?? {};
     // 本地映射表
     const allMap = getAllMapping();
     // iHost 当前设备列表

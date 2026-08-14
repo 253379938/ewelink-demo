@@ -23,3 +23,6 @@ thirdparty-req-server/data/
 *.njsproj
 *.sln
 *.sw?
+
+auto-imports.d.ts
+components.d.ts
