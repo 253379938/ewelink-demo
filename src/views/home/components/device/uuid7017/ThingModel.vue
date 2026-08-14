@@ -11,11 +11,17 @@ import { ElMessage } from "element-plus";
 const modelValue = defineModel<boolean>();
 const props = defineProps<{
     thing: ThingListItem;
+    thirdpartMap: Array<{ device_id: string; ihost_serial: string; uiid: string }>;
 }>();
 const wsStore = useWsStore();
 const userStore = useUserStore();
 
 const loading = ref<boolean>(false)
+
+// 设备是否已同步到 iHost
+const isSynced = computed(() =>
+    props.thirdpartMap.some((m) => m.device_id === props.thing.itemData.deviceid)
+);
 const targetTemperature = computed<number>({
     get: () => props.thing?.itemData.params.curTargetTemp,
     set: (value) => {
@@ -76,7 +82,10 @@ const setTargetpoint = async () => {
             ecoTargetTemp: props.thing?.itemData.params.ecoTargetTemp,
             autoTargetTemp: props.thing?.itemData.params.autoTargetTemp
         }
-        await updateThirdpartyDevice(newParams, props.thing.itemData.deviceid, localStorage.getItem('iHostToken') as string, localStorage.getItem('iHost') as string)
+        // 已同步上报 iHost
+        if (isSynced.value) {
+            await updateThirdpartyDevice(newParams, props.thing.itemData.deviceid)
+        }
     } catch (err) {
         console.error(err);
     }
@@ -101,7 +110,10 @@ const setMode = async (mode: string) => {
             ElMessage.error('控制设备失败');
             throw new Error('update params err')
         }
-        await updateThirdpartyDevice(params, props.thing.itemData.deviceid, localStorage.getItem('iHostToken') as string, localStorage.getItem('iHost') as string)
+        // 已同步上报 iHost
+        if (isSynced.value) {
+            await updateThirdpartyDevice(params, props.thing.itemData.deviceid)
+        }
     } catch (err) {
         console.error(err);
     } finally {

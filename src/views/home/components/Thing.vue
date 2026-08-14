@@ -26,7 +26,9 @@ const supportThirdparty = computed(
         String(props.thing.itemData.extra.uiid) === "7017",
 );
 
-const thirdpartedDevice = computed(() => props.thirdpartMap.findIndex(m => m.device_id === props.thing.itemData.deviceid));
+const isSynced = computed(() =>
+    props.thirdpartMap.some((m) => m.device_id === props.thing.itemData.deviceid)
+);
 
 const handleThirdparty = () => {
     emit("open-thirdparty", props.thing);
@@ -42,7 +44,7 @@ const handleThirdparty = () => {
         <div class="text-xs mt-[12px]" v-if="thing.itemData.online && thing.itemData.extra.uiid === '4'">
             {{ switchStatusText }}
         </div>
-        <el-tooltip content="同步到 iHost" effect="light" v-if="thirdpartedDevice < 0">
+        <el-tooltip content="同步到 iHost" effect="light" v-if="!isSynced">
             <el-button v-if="supportThirdparty" class="absolute top-0 right-0" :icon="Connection" type="info" text
                 circle @click.stop="handleThirdparty" />
         </el-tooltip>

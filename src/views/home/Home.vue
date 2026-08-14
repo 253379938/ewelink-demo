@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted, ref, computed, onUnmounted } from "vue";
+import { defineAsyncComponent, onMounted, ref, computed } from "vue";
 import NoTing from "@/components/NoTing.vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/store/userStore";
@@ -11,7 +11,6 @@ import type { ThingListItem } from './types.ts';
 import thirdpartyModel from "./components/thirdparty/thirdpartyModel.vue";
 import UnSupportDeviceModel from "./components/device/UnSupportDeviceModel.vue";
 import { getThirdpartyMap } from "@/api/open-api/thirdparty.ts";
-import { closeSse, connectControlSse } from "@/utils/sse.ts";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -78,7 +77,7 @@ const getDeviceMap = async () => {
   const iHost = localStorage.getItem('iHost');
   const at = localStorage.getItem('iHostToken');
   if (eWelinkAt && iHost && at) {
-    const res = await getThirdpartyMap( iHost, at);
+    const res = await getThirdpartyMap();
     thirdpartyMap.value = res.data.newMap || [];
   }
 }
@@ -87,8 +86,6 @@ onMounted(async () => {
   thingLoading.value = true;
   try {
     await wsStore.wsConnect();
-    // 连接 express SSE，接收 iHost 回调
-    connectControlSse();
     await getDeviceMap();
     await familyStore.getFamilyList();
     if (familyListData.value?.familyList) {
@@ -101,10 +98,6 @@ onMounted(async () => {
     thingLoading.value = false;
   }
 });
-
-onUnmounted(() => {
-  closeSse();
-})
 
 </script>
 
@@ -164,7 +157,7 @@ onUnmounted(() => {
       </div>
     </template>
   </el-dialog>
-  <component :is="currentDeviceModel" v-model="deviceDialogVisible" :thing="currentThing" />
+  <component :is="currentDeviceModel" v-model="deviceDialogVisible" :thing="currentThing" :thirdpart-map="thirdpartyMap" />
   <thirdpartyModel v-model="thirdpartyDialogVisible" :thing="currentThing" @get-map="getDeviceMap" />
 </template>
 

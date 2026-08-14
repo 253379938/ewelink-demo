@@ -47,7 +47,7 @@ export async function getAccessToken(iHost: string, password: string, app_name: 
     }
   })  
     console.log('retry:', retry);
-    console.log('IHOST OPEN AT:', retry.data.token);
+    console.log('iHost open at:', retry.data.token);
     return retry.data.token;
   }
   return data

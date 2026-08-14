@@ -44,9 +44,9 @@ export function paramsToIHostState(params: { [key: string]: any }) {
     const eco = params.ecoTargetTemp;
     const auto = params.autoTargetTemp;
     let targetSetpoints: { [key: string]: number } = {};
-        if (man) targetSetpoints.manual = man;
-        if (eco) targetSetpoints.eco = eco;
-        if (auto) targetSetpoints.auto = auto;
+    if (man) targetSetpoints.manual = man;
+    if (eco) targetSetpoints.eco = eco;
+    if (auto) targetSetpoints.auto = auto;
     if (Object.keys(targetSetpoints).length !== 0) {
         const setpoint: { [key: string]: any } = {};
         for (const [mode, temp] of Object.entries(targetSetpoints)) {
@@ -88,7 +88,9 @@ export function stateToParams(state: { [key: string]: any }) {
         };
         for (const [stateKey, paramKey] of Object.entries(setpointsMap)) {
             const target = setpoints[stateKey]?.targetSetpoint;
-            params[paramKey] = target * 10;
+            if (target) {
+                params[paramKey] = target * 10;
+            };
         }
     }
 

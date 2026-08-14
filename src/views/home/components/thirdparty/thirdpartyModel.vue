@@ -28,7 +28,7 @@ const handleConfirm = async () => {
             localStorage.setItem('iHost', iHostForm.iHostUrl);
             iHostAt = res.data.access_token;
         }
-        await thirdpartyDevice(props.thing?.itemData, iHostAt as string, localStorage.getItem('iHost') as string);
+        await thirdpartyDevice(props.thing?.itemData);
     } catch {
     } finally {
         emit('get-map');

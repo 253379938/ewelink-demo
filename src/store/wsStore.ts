@@ -4,151 +4,19 @@ import { appid } from "@/constants";
 import { useUserStore } from "@/store/userStore";
 import { useThingStore } from "@/store/home/thingStore";
 
-export interface WsUrlBase {
-  IP: string;
-  port: number;
-  domain: string;
-  reason: string;
-  error: number;
-}
-export interface WsInterval {
-  action: "userOnline";
-  version: 8;
-  ts?: number;
-  at: string;
-  userAgent: "app";
-  apikey: string;
-  appid: string;
-  nonce: string;
-  sequence: number;
-}
-export interface HeartbeatConfig {
-  hb?: number;
-  hbInterval?: number;
-}
-
+// 连接 server ws
 export const useWsStore = defineStore("ws", () => {
-  const wsUrlBase = ref<WsUrlBase | null>(null);
   const wsInstance = ref<WebSocket | null>(null);
   const userStore = useUserStore();
   const thingStore = useThingStore();
 
-  const pongTimeOut = 3000;
+  let reconnectTimer: number | null = null;
   let retryCount = 0;
   const retryTimeOut = 3000;
   const maxRetryTimeOut = 30000;
-
-  let heartbeatTimer: number | null = null;
-  let pongTimeoutTimer: number | null = null;
-
-  let reconnectTimer: number | null = null;
   let isReconnect = false;
 
-  // 分配 url
-  const getWsUrl = async () => {
-    try {
-      const data = await fetch("https://cn-dispa.coolkit.cn/dispatch/app", {
-        method: "GET",
-      });
-      const res = await data.json();
-      if (res.error === 0) {
-        wsUrlBase.value = res;
-      }
-    } catch {}
-  };
-
-  // 握手获取 HeartbeatConfig
-  const initSend = () => {
-    if (!wsInstance.value) return;
-    wsInstance.value.send(
-      JSON.stringify({
-        action: "userOnline",
-        version: 8,
-        at: userStore.userData?.at || "",
-        userAgent: "app",
-        ts: Math.floor(Date.now() / 1000),
-        apikey: userStore.userData?.user.apikey || "",
-        appid: appid,
-        nonce: Math.random().toString(36).slice(2, 10),
-        sequence: Date.now(),
-      }),
-    );
-  };
-
-  // 触发 heatBeat
-  const startHeartbeat = (config: HeartbeatConfig) => {
-    stopHeartbeat();
-
-    try {
-      if (config.hb === 1) {
-        const interval = ((config.hbInterval || 90) - 7) * 1000;
-
-        heartbeatTimer = setInterval(() => {
-          if (wsInstance.value) {
-            clearPongTimeout();
-            wsInstance.value.send("ping");
-            pongTimeoutTimer = setTimeout(() => {
-              wsInstance.value?.close();
-            }, pongTimeOut);
-          } else {
-            stopHeartbeat();
-          }
-        }, interval);
-      }
-    } catch (e) {}
-  };
-
-  // 清理定时器
-  const stopHeartbeat = () => {
-    if (heartbeatTimer) {
-      clearInterval(heartbeatTimer);
-      heartbeatTimer = null;
-    }
-  };
-  const clearPongTimeout = () => {
-    if (pongTimeoutTimer) {
-      clearTimeout(pongTimeoutTimer);
-      pongTimeoutTimer = null;
-    }
-  };
-
-  // logout 关闭 ws
-  const closeWs = () => {
-    stopHeartbeat();
-    clearPongTimeout();
-
-    pendingMap.forEach((item) => clearTimeout(item.timer));
-    pendingMap.clear();
-
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    isReconnect = false;
-    retryCount = 0;
-    if (wsInstance.value) {
-      wsInstance.value.close(1000, "logout");
-      wsInstance.value = null;
-    }
-  };
-
-  // 重连
-  const retryConnect = () => {
-    console.log("retry connect");
-    if (isReconnect) return;
-    retryCount++;
-    isReconnect = true;
-    let delay = retryTimeOut * Math.pow(2, retryCount - 1);
-    delay = Math.min(delay, maxRetryTimeOut);
-    reconnectTimer = setTimeout(async () => {
-      try {
-        isReconnect = false;
-        wsUrlBase.value = null;
-        await wsConnect();
-      } catch (err) {
-        retryConnect();
-      }
-    }, delay);
-  };
-
-  // update switches sendPromise
+  // 控制命令发送 promise
   const pendingMap = new Map<string, { resolve: Function; timer: number }>();
   const updateTimeOut = 5000;
   const updateParams = (data: Record<string, any>) => {
@@ -158,12 +26,29 @@ export const useWsStore = defineStore("ws", () => {
         const sequence = String(data.sequence);
         const timer = setTimeout(() => {
           pendingMap.delete(sequence);
-          reject(new Error("switches update timeout"));
+          reject(new Error("device update timeout"));
         }, updateTimeOut);
         pendingMap.set(sequence, { resolve, timer });
         wsInstance.value.send(JSON.stringify(data));
       },
     );
+  };
+
+  // 重连
+  const retryConnect = () => {
+    if (isReconnect) return;
+    retryCount++;
+    isReconnect = true;
+    let delay = retryTimeOut * Math.pow(2, retryCount - 1);
+    delay = Math.min(delay, maxRetryTimeOut);
+    reconnectTimer = setTimeout(async () => {
+      try {
+        isReconnect = false;
+        await wsConnect();
+      } catch (err) {
+        retryConnect();
+      }
+    }, delay);
   };
 
   const wsConnect = () => {
@@ -172,32 +57,38 @@ export const useWsStore = defineStore("ws", () => {
         if (wsInstance.value) {
           return reject(new Error("ws instance existed"));
         }
-        if (!wsUrlBase.value) {
-          await getWsUrl();
-        }
-        const wsUrl = `wss://${wsUrlBase.value?.domain}:${wsUrlBase.value?.port}/api/ws`;
+        const wsUrl = `ws://${location.host}/open-api/ws`;
         wsInstance.value = new WebSocket(wsUrl);
 
         wsInstance.value.onopen = () => {
-          console.log("ws connect");
+          console.log("ws connected to server");
           isReconnect = false;
           retryCount = 0;
-          initSend();
+          // 握手：传递 ewelink 云连接所需的凭证
+          const at = userStore.userData?.at;
+          const apikey = userStore.userData?.user.apikey;
+          if (at && apikey) {
+            wsInstance.value?.send(
+              JSON.stringify({
+                action: "userOnline",
+                version: 8,
+                ts: Math.floor(Date.now() / 1000),
+                at,
+                userAgent: "app",
+                apikey,
+                appid,
+                nonce: Math.random().toString(36).slice(2, 10),
+                sequence: Date.now(),
+              }),
+            );
+          }
           resolve(wsInstance.value);
         };
 
         wsInstance.value.onmessage = (e) => {
-          if (e.data === "pong") {
-            clearPongTimeout();
-            return;
-          }
           try {
             const data = JSON.parse(e.data);
-            // heartBeat
-            if (data.config) {
-              startHeartbeat(data.config);
-            }
-            // update web修改数据响应
+            // 控制命令响应（server 回显前端的 sequence）
             if (pendingMap.has(data.sequence)) {
               const item = pendingMap.get(data.sequence)!;
               clearTimeout(item.timer);
@@ -205,11 +96,10 @@ export const useWsStore = defineStore("ws", () => {
               item.resolve(data);
               return;
             }
-            // update server推送的数据：合并
-            if (data.action === "update" && data.deviceid && data.params) {              
+            // server 推送的消息进行合并 params
+            if (data.action === "update" && data.deviceid && data.params) {
               thingStore.mergeThingParams(data.deviceid, data.params);
             }
-            // sysmsg
             if (data.action === "sysmsg") {
               thingStore.setThingOnline(data.deviceid, data.params.online);
             }
@@ -223,18 +113,10 @@ export const useWsStore = defineStore("ws", () => {
 
         wsInstance.value.onclose = (e) => {
           console.warn(`ws close`, e);
-          stopHeartbeat();
-          clearPongTimeout();
-
-          pendingMap.forEach((item) => {
-            clearTimeout(item.timer);
-          });
+          pendingMap.forEach((item) => clearTimeout(item.timer));
           pendingMap.clear();
-
           wsInstance.value = null;
           if (e.code === 1000) return;
-
-          // 尝试重连
           reject(e);
           retryConnect();
         };
@@ -243,6 +125,20 @@ export const useWsStore = defineStore("ws", () => {
       }
     });
   };
+
+  // 关闭
+  const closeWs = () => {
+    pendingMap.forEach((item) => clearTimeout(item.timer));
+    pendingMap.clear();
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    isReconnect = false;
+    retryCount = 0;
+    if (wsInstance.value) {
+      wsInstance.value.close(1000, "logout");
+      wsInstance.value = null;
+    }
+  };
+
   return {
     wsInstance,
     wsConnect,

@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import { getAccessToken, getDevices, thirdpartyDevice, updateThirdpartyDevice } from '../services/ihost.ts'
 import { buildEndpoint } from '../utils/buildEndpoint/index.ts'
-import { deleteMapping, getAllMapping, getMapping, saveMapping } from '../db/index.ts'
-import { addSseClient, pushSse, removeSseClient } from '../services/sse.ts'
+import { deleteMapping, getAllMapping, getIHostCred, getMapping, saveIHostCred, saveMapping } from '../db/index.ts'
+import * as ewelinkWs from '../services/ewelinkWs.ts'
 
 export const thirdpartyRouter = Router()
 
@@ -11,6 +11,9 @@ thirdpartyRouter.post('/open-api/access_token', async (req, res, next) => {
   try {
     const { iHost, password, app_name } = req.body ?? {};
     const accessToken = await getAccessToken(iHost, password, app_name);
+    // 保存 iHost 凭据
+    const token = accessToken;
+    if (token && iHost) saveIHostCred(token, iHost);
 
     res.json({ status: 'ok', data: { access_token: accessToken } });
   } catch (err) {
@@ -21,10 +24,11 @@ thirdpartyRouter.post('/open-api/access_token', async (req, res, next) => {
 // 同步设备 /open-api/thirdparty/event
 thirdpartyRouter.post('/open-api/thirdparty/event', async (req, res, next) => {
   try {
-    const { eWeLinkEvent, at, iHost } = req.body ?? {};
+    const { eWeLinkEvent } = req.body ?? {};
+    const ihost = getIHostCred();
     const uiid = eWeLinkEvent.extra.uiid
     const device = buildEndpoint[uiid as keyof typeof buildEndpoint].buildEndpointUIID7017(eWeLinkEvent);
-    const data: any = await thirdpartyDevice(device, at, iHost);
+    const data: any = await thirdpartyDevice(device, ihost?.at ?? '', ihost?.url ?? '');
     // 存eWeLink deviceid --- iHost serial_number
     const ewelinkDeviceId = data?.payload?.endpoints?.[0].third_serial_number;
     const ihostSerial = data?.payload?.endpoints?.[0].serial_number;
@@ -41,11 +45,12 @@ thirdpartyRouter.post('/open-api/thirdparty/event', async (req, res, next) => {
 // 设备状态更新
 thirdpartyRouter.post('/open-api/device', async (req, res, next) => {
   try {
-    const { params, deviceId, at, iHost } = req.body ?? {};
+    const { params, deviceId } = req.body ?? {};
+    const ihost = getIHostCred();
     const mapping = getMapping(deviceId);
     const serial_number = mapping?.ihost_serial as string;
     const state = buildEndpoint[mapping?.uiid as keyof typeof buildEndpoint]?.paramsToIHostState(params);
-    const data: any = await updateThirdpartyDevice(state, serial_number, deviceId, at, iHost);
+    const data: any = await updateThirdpartyDevice(state, serial_number, deviceId, ihost?.at ?? '', ihost?.url ?? '');
     res.json({ status: 'ok', data });
   } catch (err) {
     next(err);
@@ -60,8 +65,10 @@ thirdpartyRouter.post('/open-api/device/:deviceId', async (req, res, next) => {
       const mapping = getMapping(endpoint.third_serial_number);
       const uiid = mapping?.uiid as string;
       const params = buildEndpoint[uiid as keyof typeof buildEndpoint].stateToParams(payload.state);
-      // SSE 推给前端，前端 eWeLink WS 下发控制指令
-      pushSse('device-control', { deviceid: endpoint.third_serial_number, params });
+      // iHost 回调 → server 转发 eWeLink 云端 WS 下发控制指令
+      ewelinkWs.sendUpdate(endpoint.third_serial_number, params).catch((err: Error) =>
+        console.error('[ewelink ws] webhook sendUpdate err', err),
+      );
       res.json({
         "event": {
           "header": {
@@ -79,36 +86,26 @@ thirdpartyRouter.post('/open-api/device/:deviceId', async (req, res, next) => {
           }
         }
       });
+      // 回调如果更新目标温度、模式切回手动
+      if (params.manTargetTemp) {
+        const ihost = getIHostCred();
+        const state = buildEndpoint[uiid as keyof typeof buildEndpoint].paramsToIHostState({ workMode: '0' });
+        await updateThirdpartyDevice(state, endpoint.serial_number, endpoint.third_serial_number, ihost?.at ?? '', ihost?.url ?? '');
+      }
     }
   } catch (err) {
     next(err);
   }
 })
 
-// SSE连接用于处理 iHost 回调
-thirdpartyRouter.get('/open-api/events', (req, res) => {
-  // const user = req.query.user as string;  
-  res.setHeader('Content-Type', 'text/event-stream')
-  res.setHeader('Cache-Control', 'no-cache')
-  res.setHeader('Connection', 'keep-alive')
-  res.flushHeaders()
-  addSseClient(res)
-  // heartbeat
-  const heartbeat = setInterval(() => res.write(': keep-alive\n'), 30000)
-  req.on('close', () => {
-    clearInterval(heartbeat)
-    removeSseClient(res)
-  })
-})
-
 // 返回所有映射 (判断是否同步)
-thirdpartyRouter.post('/open-api/thirdparty-map', async (req, res, next) => {
+thirdpartyRouter.post('/open-api/thirdparty-map', async (_req, res, next) => {
   try {
-    const { iHost, at, } = req.body ?? {};
+    const ihost = getIHostCred();
     // 本地映射表
     const allMap = getAllMapping();
     // iHost 当前设备列表
-    const devices = await getDevices(iHost, at);
+    const devices = await getDevices(ihost?.url ?? '', ihost?.at ?? '');
     const deviceList = devices?.data.device_list ?? [];
 
     // iHost 存在的 thirdparty 设备
