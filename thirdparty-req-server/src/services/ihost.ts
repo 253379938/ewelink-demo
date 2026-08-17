@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { IHostDevice } from '../type/devices.ts'
+import { v4 as uuidv4 } from 'uuid';
 
 // iHost Open API http
 const http = axios.create({
@@ -8,49 +9,24 @@ const http = axios.create({
 
 http.interceptors.response.use((response) => response.data);
 
-// iHOST login
-export async function loginIHost(iHost: string, password: string): Promise<any> {
-  const url = new URL('/api/v1/rest/bridge/login', iHost)
-  return http.post(url.toString(), {
-    password,
-  })
-}
-// iHost 发放 authorization
-export async function authorization(iHost: string, at: string): Promise<any> {
-  const url = new URL('/api/v1/rest/bridge/openapi/authorization', iHost)
-  return http.post(url.toString(), {
-    type: 'openapi'
-  }, {
-    headers: {
-      Authorization: `Bearer ${at}`
-    }
-  })
-}
-
 // 获取凭证 iHost At
-export async function getAccessToken(iHost: string, password: string, app_name: string): Promise<any> {
+export async function getAccessToken(iHost: string, app_name: string, shouldAbort?: () => boolean): Promise<any> {
   const url = new URL('/open-api/v2/rest/bridge/access_token', iHost)
-  const data: any = await http.get(url.toString(), {
-    params: {
-      app_name,
+  // 轮询等待 iHost 授权;最多 100 次,5 分钟
+  for (let attempt = 1; attempt <= 100; attempt++) {
+    // 客户端断开/取消 中止轮询
+    if (shouldAbort?.()) throw new Error('ABORTED')
+    const data: any = await http.get(url.toString(), {
+      params: { app_name },
+    })
+    const token = data?.data?.token
+    if (data.error === 0 && token) {
+      return token
     }
-  })  
-  // 触发 iHost 登录,同意发放凭证
-  if (data.error === 401) {
-    const res = await loginIHost(iHost, password);
-    
-    await authorization(iHost, res.data.at);
-    // 授权完成后重新 GET 一次
-    const retry: any =await http.get(url.toString(), {
-    params: {
-      app_name,
-    }
-  })  
-    console.log('retry:', retry);
-    console.log('iHost open at:', retry.data.token);
-    return retry.data.token;
+    console.log(`getAccessToken 第 ${attempt} 次轮询 error=${data?.error} 3s 后重试`)
+    await new Promise((r) => setTimeout(r, 3000))
   }
-  return data
+  throw new Error('获取 iHost access_token 超时，请确认 iHost 已授权')
 }
 
 // iHost 设备列表
@@ -71,7 +47,7 @@ export const thirdpartyDevice = (device: IHostDevice, at: string, iHost: string)
           event: {
             header: {
               name: "DiscoveryRequest",
-              message_id: "Unique identifier, preferably a version 4 UUID",
+              message_id: uuidv4(),
               version: "2"
             },
             payload: {
@@ -94,7 +70,7 @@ export const updateThirdpartyDevice = (state: any, serial_number: string, third_
           event: {
             header: {
               name: "DeviceStatesChangeReport",
-              message_id: "Unique identifier, preferably a version 4 UUID",
+              message_id: uuidv4(),
               version: "2"
             },
             endpoint: {

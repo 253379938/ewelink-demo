@@ -9,9 +9,8 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: "get-map"): void }>();
 
 const modelValue = defineModel<boolean>();
-const iHostForm = reactive<{ iHostUrl: string; iHostPassword: string; }>({
+const iHostForm = reactive<{ iHostUrl: string; }>({
     iHostUrl: '',
-    iHostPassword: '',
 });
 
 let iHostAt = localStorage.getItem('iHostToken');
@@ -22,7 +21,7 @@ const handleConfirm = async () => {
         if (!hasIHost.value) {
             // phoneNumber 作为 app_name
             const app_name = JSON.parse(localStorage.getItem('user') as string).user.phoneNumber || ''
-            const res = await getOpenApiAt(iHostForm.iHostUrl, iHostForm.iHostPassword, app_name);
+            const res = await getOpenApiAt(iHostForm.iHostUrl, app_name);
 
             localStorage.setItem('iHostToken', res.data.access_token);
             localStorage.setItem('iHost', iHostForm.iHostUrl);
@@ -43,9 +42,6 @@ const handleConfirm = async () => {
         <el-form v-if="!hasIHost" :model="iHostForm" label-width="auto" style="max-width: 600px">
             <el-form-item label="iHost IP">
                 <el-input v-model="iHostForm.iHostUrl" />
-            </el-form-item>
-            <el-form-item label="iHost password">
-                <el-input v-model="iHostForm.iHostPassword" />
             </el-form-item>
         </el-form>
         <template #footer>

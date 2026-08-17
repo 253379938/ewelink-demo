@@ -9,14 +9,21 @@ export const thirdpartyRouter = Router()
 // 拦截 open-api/access_token
 thirdpartyRouter.post('/open-api/access_token', async (req, res, next) => {
   try {
-    const { iHost, password, app_name } = req.body ?? {};
-    const accessToken = await getAccessToken(iHost, password, app_name);
+    const { iHost, app_name } = req.body ?? {};
+    // 客户端断开/取消时中止轮询（前端重新请求会 abort 上一个）
+    let aborted = false
+    res.on('close', () => { aborted = true })
+
+    const accessToken = await getAccessToken(iHost, app_name, () => aborted);
+    if (aborted) return // 客户端已断开，不再响应
     // 保存 iHost 凭据
     const token = accessToken;
     if (token && iHost) saveIHostCred(token, iHost);
 
     res.json({ status: 'ok', data: { access_token: accessToken } });
   } catch (err) {
+    // 请求被取消（客户端断开）时静默返回
+    if ((err as Error)?.message === 'ABORTED') return
     next(err);
   }
 })
@@ -73,7 +80,7 @@ thirdpartyRouter.post('/open-api/device/:deviceId', async (req, res, next) => {
         "event": {
           "header": {
             "name": "Response",
-            "message_id": "Unique identifier, preferably a version 4 UUID",
+            "message_id": header.message_id,
             "version": "2"
           },
           "payload": {

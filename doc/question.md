@@ -12,7 +12,7 @@
    
 3. 怎么判断设备有4个通道
    
-    返回的 thingList 的每一项 thing 存在 itemData 属性，itemData.extra.uuid === 4 
+    返回的 thingList 的每一项 thing 存在 itemData 属性，itemData.extra.uiid === 4 
     或者 itemData.params.switches.length === 4 代表四个开关
 
 4. 请求登陆接口时，用到的加密属于什么加密？常见的加密有哪些类型？

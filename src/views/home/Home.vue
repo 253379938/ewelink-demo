@@ -57,7 +57,7 @@ const supportUIID = ['4', '7017']
 const currentDeviceModel = computed(() => {
   const uiid = String(currentThing.value?.itemData.extra?.uiid);
   if (!uiid || !supportUIID.includes(uiid)) return UnSupportDeviceModel;
-  return defineAsyncComponent(() => import(`./components/device/uuid${uiid}/ThingModel.vue`));
+  return defineAsyncComponent(() => import(`./components/device/uiid${uiid}/ThingModel.vue`));
 });
 
 const handleOpenThingModel = (thing: ThingListItem) => {

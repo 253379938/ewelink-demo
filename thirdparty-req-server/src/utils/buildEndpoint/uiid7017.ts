@@ -18,7 +18,7 @@ export function buildEndpointUIID7017
         manufacturer: brandName || '',
         model: productModel || '',
         firmware_version: params?.fwVersion || '',
-        service_address: `http://192.168.1.113:${config.port}/open-api/device/${deviceid}`,
+        service_address: `http://192.168.1.110:${config.port}/open-api/device/${deviceid}`,
     };
 }
 
