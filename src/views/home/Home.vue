@@ -8,7 +8,9 @@ import { useThingStore } from "@/store/home/thingStore";
 import { useWsStore } from "@/store/wsStore";
 import Thing from "./components/Thing.vue";
 import type { ThingListItem } from './types.ts';
-import thirdpartyModel from "./components/thirdparty/thirdpartyModel.vue";
+import ThirdpartyModel from "./components/thirdparty/thirdpartyModel.vue";
+import DeleteModel from "./components/thirdparty/deleteModel.vue";
+
 import UnSupportDeviceModel from "./components/device/UnSupportDeviceModel.vue";
 import { getThirdpartyDevice } from "@/api/open-api/thirdparty.ts";
 
@@ -25,6 +27,7 @@ const contentRef = ref<HTMLElement | null>(null);
 const dialogVisible = ref<boolean>(false);
 const deviceDialogVisible = ref<boolean>(false);
 const thirdpartyDialogVisible = ref<boolean>(false);
+const deleteDialogVisible = ref<boolean>(false);
 
 const thingLoading = ref<boolean>(false);
 const thirdpartyMap = ref<Array<{ device_id: string; ihost_serial: string; }> | []>([]);
@@ -71,6 +74,11 @@ const handleOpenThirdparty = (thing: ThingListItem) => {
   thirdpartyDialogVisible.value = true;
 };
 
+// 打开删除弹窗
+const handleOpenDelete = (thing: ThingListItem) => {
+  currentThing.value = thing;
+  deleteDialogVisible.value = true;
+};
 
 const getDeviceMap = async () => {
   const res = await getThirdpartyDevice();
@@ -132,7 +140,7 @@ onMounted(async () => {
           <div class="flex gap-[24px] mt-[12px] flex-wrap">
             <Thing v-for="thing in getDeclareThings(family.id)" :key="thing.itemData.deviceid" :thing="thing"
               :thirdpart-map="thirdpartyMap" @click="handleOpenThingModel(thing)"
-              @open-thirdparty="handleOpenThirdparty" />
+              @open-thirdparty="handleOpenThirdparty" @open-delete="handleOpenDelete" />
           </div>
         </div>
 
@@ -141,7 +149,7 @@ onMounted(async () => {
           <div v-if="getTingByRoom(family.id, room.id).length > 0" class="flex gap-[24px] mt-[12px] flex-wrap">
             <Thing v-for="thing in getTingByRoom(family.id, room.id)" :key="thing.itemData.deviceid" :thing="thing"
               :thirdpart-map="thirdpartyMap" @click="handleOpenThingModel(thing)"
-              @open-thirdparty="handleOpenThirdparty" />
+              @open-thirdparty="handleOpenThirdparty" @open-delete="handleOpenDelete" />
           </div>
 
           <NoTing v-else />
@@ -161,7 +169,8 @@ onMounted(async () => {
   </el-dialog>
   <component :is="currentDeviceModel" v-model="deviceDialogVisible" :thing="currentThing"
     :thirdpart-map="thirdpartyMap" />
-  <thirdpartyModel v-model="thirdpartyDialogVisible" :thing="currentThing" @get-map="getDeviceMap" />
+  <ThirdpartyModel v-model="thirdpartyDialogVisible" :thing="currentThing" @get-map="getDeviceMap" />
+  <DeleteModel v-model="deleteDialogVisible" :thing="currentThing" @get-map="getDeviceMap" />
 </template>
 
 <style scoped lang="scss">

@@ -34,3 +34,8 @@ export const updateThirdpartyDevice = (params: any, deviceId: string) => {
 export const getThirdpartyDevice = () => {
     return requestOpenApi.get('/open-api/devices')
 }
+
+// 取消同步设备
+export const deleteThirdpartyDevice = (deviceId: string) => {
+    return requestOpenApi.delete(`/open-api/device/${deviceId}`)
+}

@@ -1,5 +1,5 @@
-import { buildEndpointUIID, paramsToIHostState, stateToParams } from "./uiid7017.ts"
+import { buildEndpointUIID, capabilitiesToParams, paramsToIHostCapabilities, paramsToIHostState, stateToParams } from "./uiid7017.ts"
 
 export const buildEndpoint = {
-    'TRVZB': {buildEndpointUIID, paramsToIHostState, stateToParams}
+    'TRVZB': {buildEndpointUIID, paramsToIHostState, stateToParams, paramsToIHostCapabilities, capabilitiesToParams}
 }

@@ -9,7 +9,7 @@ const props = defineProps<{
     thirdpartMap: Array<{ device_id: string; ihost_serial: string; }>;
 }>();
 
-const emit = defineEmits<{ (e: "open-thirdparty", thing: ThingListItem): void }>();
+const emit = defineEmits<{ (e: "open-thirdparty", thing: ThingListItem): void, (e: "open-delete", thing: ThingListItem): void }>();
 
 const switchStatusText = computed(() => {
     const switches = props.thing.itemData?.params?.switches;
@@ -33,6 +33,10 @@ const isSynced = computed(() =>
 const handleThirdparty = () => {
     emit("open-thirdparty", props.thing);
 }
+
+const handleDelete = () => {
+    emit("open-delete", props.thing);
+}
 </script>
 
 <template>
@@ -49,7 +53,7 @@ const handleThirdparty = () => {
                 circle @click.stop="handleThirdparty" />
         </el-tooltip>
         <div v-else class="absolute top-2 right-2 text-xs text-blue-500">
-            已同步
+            <span @click.stop="handleDelete">已同步</span>
         </div>
     </div>
 </template>

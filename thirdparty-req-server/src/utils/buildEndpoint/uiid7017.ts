@@ -12,7 +12,7 @@ export function buildEndpointUIID
         third_serial_number: deviceid,
         name,
         display_category: category,
-        capabilities,
+        capabilities: paramsToIHostCapabilities(capabilities, params),
         state: paramsToIHostState(params),
         manufacturer: brandName || '',
         model: productModel || '',
@@ -95,3 +95,90 @@ export function stateToParams(state: { [key: string]: any }) {
 
     return params;
 }
+
+export type Capabilities = {
+            capability: string;
+            permission: string;
+            name?: string;
+            settings?: Record<string, any>;
+        }[]
+
+// eWeLink params → iHost capabilities
+export function paramsToIHostCapabilities(capabilities: Capabilities, params: { [key: string]: any }) {
+    const iHostCapabilities = capabilities;
+
+    // weeklySchedule
+    const daysMap: { [key: string]: string } = {
+        mon: 'Monday', tues: 'Tuesday', wed: 'Wednesday', thur: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday'
+    }
+    let weeklyScheduleValue: { [key: string]: Array<{ startTimeInMinutes: number; upperSetpoint: number; lowerSetpoint: number }> } = {};
+    function parseDay(d: string) {
+        const result = [];
+        for (let i = 0; i < 6; i++) {
+            const offset = i * 8;
+            const part = d.slice(offset, offset + 8);
+            const startTimeInMinutes = parseInt(part.slice(0, 4), 16);
+            const upperSetpoint = parseInt(part.slice(4, 8), 16) / 10;
+            const lowerSetpoint = parseInt(part.slice(4, 8), 16) / 10;
+            result.push({ startTimeInMinutes, upperSetpoint, lowerSetpoint });
+        }
+        return result;
+    }
+    for (const key in daysMap) {
+        if (params[key] !== undefined) {
+            const value = daysMap[key]
+            weeklyScheduleValue[value] = parseDay(params[key]);
+        }
+    }
+    const auto = iHostCapabilities.find(c => c.capability === "thermostat-target-setpoint" && c.name === "auto-mode")!;
+    auto.settings!.weeklySchedule.value = { ...auto.settings!.weeklySchedule.value, ...weeklyScheduleValue }
+    return iHostCapabilities;
+}
+
+// iHost capabilities → eWeLink params
+export function capabilitiesToParams(capabilities: Capabilities): { [key: string]: any } {
+    const params: { [key: string]: any } = {};
+
+    // weeklySchedule
+    const auto = capabilities.find(
+        c => c.capability === "thermostat-target-setpoint" && c.name === "auto-mode"
+    );
+    
+    if (!auto?.settings?.weeklySchedule?.value) {
+        return params;
+    }
+    const weeklyScheduleValue = auto.settings.weeklySchedule.value;
+    const reverseDaysMap: Record<string, string> = {
+        Monday:    'mon',
+        Tuesday:   'tues',
+        Wednesday: 'wed',
+        Thursday:  'thur',
+        Friday:    'fri',
+        Saturday:  'sat',
+        Sunday:    'sun'
+    };
+
+    // 编码单个日期的 6 个时间段为 48 位十六进制字符串
+    function encodeDay(
+        dayArray: Array<{ startTimeInMinutes: number; upperSetpoint: number; lowerSetpoint?: number }>
+    ): string {
+        let result = '';
+        for (let i = 0; i < 6; i++) {
+            const slot = dayArray[i] || { startTimeInMinutes: 0, upperSetpoint: 0, lowerSetpoint: 0 };
+            const startHex = slot.startTimeInMinutes.toString(16).padStart(4, '0');
+            const tempHex = Math.round(slot.upperSetpoint * 10).toString(16).padStart(4, '0');
+            result += startHex + tempHex;
+        }
+        return result;
+    }
+
+    for (const [fullName, shortName] of Object.entries(reverseDaysMap)) {
+        const dayData = weeklyScheduleValue[fullName];
+        if (Array.isArray(dayData) && dayData.length > 0) {
+            params[shortName] = encodeDay(dayData);
+        }
+    }
+
+    return params;
+}
+

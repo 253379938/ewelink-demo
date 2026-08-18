@@ -31,25 +31,25 @@ export async function getAccessToken(iHost: string, app_name: string, shouldAbor
 
 // 同步设备
 export const thirdpartyDevice = (device: IHostDevice, at: string, iHost: string) => {
-    const url = new URL('/open-api/v2/rest/thirdparty/event', iHost)
-    return http.post(url.toString(),
-        {
-          event: {
-            header: {
-              name: "DiscoveryRequest",
-              message_id: uuidv4(),
-              version: "2"
-            },
-            payload: {
-              endpoints: [device]
-            }
-            }
-        }, {
-        headers: {
-            "Content-Type": 'application/json',
-            "Authorization": `Bearer ${at}`
+  const url = new URL('/open-api/v2/rest/thirdparty/event', iHost)
+  return http.post(url.toString(),
+    {
+      event: {
+        header: {
+          name: "DiscoveryRequest",
+          message_id: uuidv4(),
+          version: "2"
+        },
+        payload: {
+          endpoints: [device]
         }
-    })
+      }
+    }, {
+    headers: {
+      "Content-Type": 'application/json',
+      "Authorization": `Bearer ${at}`
+    }
+  })
 }
 
 // 设备状态更新
@@ -81,12 +81,24 @@ export const updateThirdpartyDevice = (state: any, serial_number: string, third_
 
 // 查询同步设备
 export const getThirdpartyDevice = (at: string, iHost: string) => {
-    const url = new URL('/open-api/v2/rest/devices', iHost)
-    return http.get(url.toString(),
-        {
-        headers: {
-            "Content-Type": 'application/json',
-            "Authorization": `Bearer ${at}`
-        }
+  const url = new URL('/open-api/v2/rest/devices', iHost)
+  return http.get(url.toString(),
+    {
+      headers: {
+        "Content-Type": 'application/json',
+        "Authorization": `Bearer ${at}`
+      }
+    })
+}
+
+// 删除同步设备
+export const deleteThirdpartyDevice = (at: string, iHost: string, serial_number: string) => {
+  const url = new URL(`/open-api/v1/rest/devices/${serial_number}`, iHost)
+  return http.delete(url.toString(),
+    {
+      headers: {
+        "Content-Type": 'application/json',
+        "Authorization": `Bearer ${at}`
+      }
     })
 }
