@@ -29,16 +29,6 @@ export async function getAccessToken(iHost: string, app_name: string, shouldAbor
   throw new Error('获取 iHost access_token 超时，请确认 iHost 已授权')
 }
 
-// iHost 设备列表
-export async function getDevices(iHost: string, at: string): Promise<any> {
-  const url = new URL('/open-api/v2/rest/devices', iHost)
-  return http.get(url.toString(), {
-    headers: {
-      Authorization: `Bearer ${at}`
-    }
-  })
-}
-
 // 同步设备
 export const thirdpartyDevice = (device: IHostDevice, at: string, iHost: string) => {
     const url = new URL('/open-api/v2/rest/thirdparty/event', iHost)
@@ -89,3 +79,14 @@ export const updateThirdpartyDevice = (state: any, serial_number: string, third_
     })
 }
 
+// 查询同步设备
+export const getThirdpartyDevice = (at: string, iHost: string) => {
+    const url = new URL('/open-api/v2/rest/devices', iHost)
+    return http.get(url.toString(),
+        {
+        headers: {
+            "Content-Type": 'application/json',
+            "Authorization": `Bearer ${at}`
+        }
+    })
+}

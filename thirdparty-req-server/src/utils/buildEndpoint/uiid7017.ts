@@ -3,11 +3,10 @@ import { uiidConfig } from "../../constants/uiid/index.ts";
 import { config } from "../../config.ts";
 
 // transform endpoints
-export function buildEndpointUIID7017
+export function buildEndpointUIID
     (info: EWeLinkDevice) {
-    const { deviceid, name, extra, params, brandName, productModel } = info;
-    const uiid = extra.uiid;
-    const { category, capabilities } = uiidConfig[uiid as keyof typeof uiidConfig]
+    const { deviceid, name, params, brandName, productModel } = info;
+    const { category, capabilities } = uiidConfig[productModel as keyof typeof uiidConfig]
 
     return {
         third_serial_number: deviceid,

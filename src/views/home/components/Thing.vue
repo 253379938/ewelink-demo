@@ -6,7 +6,7 @@ import { Connection } from "@element-plus/icons-vue";
 
 const props = defineProps<{
     thing: ThingListItem;
-    thirdpartMap: Array<{ device_id: string; ihost_serial: string; uiid: string }>;
+    thirdpartMap: Array<{ device_id: string; ihost_serial: string; }>;
 }>();
 
 const emit = defineEmits<{ (e: "open-thirdparty", thing: ThingListItem): void }>();

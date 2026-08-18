@@ -13,19 +13,17 @@ const iHostForm = reactive<{ iHostUrl: string; }>({
     iHostUrl: '',
 });
 
-let iHostAt = localStorage.getItem('iHostToken');
-const hasIHost = computed(() => iHostAt && iHostAt !== '')
+let iHostUrl = localStorage.getItem('iHost');
+const hasIHost = computed(() => iHostUrl && iHostUrl !== '')
 
 const handleConfirm = async () => {    
     try {
         if (!hasIHost.value) {
             // phoneNumber 作为 app_name
             const app_name = JSON.parse(localStorage.getItem('user') as string).user.phoneNumber || ''
-            const res = await getOpenApiAt(iHostForm.iHostUrl, app_name);
+            await getOpenApiAt(iHostForm.iHostUrl, app_name);
 
-            localStorage.setItem('iHostToken', res.data.access_token);
             localStorage.setItem('iHost', iHostForm.iHostUrl);
-            iHostAt = res.data.access_token;
         }
         await thirdpartyDevice(props.thing?.itemData);
     } catch {

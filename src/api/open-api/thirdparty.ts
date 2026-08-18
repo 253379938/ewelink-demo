@@ -30,7 +30,7 @@ export const updateThirdpartyDevice = (params: any, deviceId: string) => {
         })
 }
 
-// 查询设备同步映射
-export const getThirdpartyMap = () => {
-    return requestOpenApi.post('/open-api/thirdparty-map', {})
+// 查询同步设备
+export const getThirdpartyDevice = () => {
+    return requestOpenApi.get('/open-api/devices')
 }

@@ -10,7 +10,7 @@ import Thing from "./components/Thing.vue";
 import type { ThingListItem } from './types.ts';
 import thirdpartyModel from "./components/thirdparty/thirdpartyModel.vue";
 import UnSupportDeviceModel from "./components/device/UnSupportDeviceModel.vue";
-import { getThirdpartyMap } from "@/api/open-api/thirdparty.ts";
+import { getThirdpartyDevice } from "@/api/open-api/thirdparty.ts";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -27,7 +27,7 @@ const deviceDialogVisible = ref<boolean>(false);
 const thirdpartyDialogVisible = ref<boolean>(false);
 
 const thingLoading = ref<boolean>(false);
-const thirdpartyMap = ref<Array<{ device_id: string; ihost_serial: string; uiid: string }> | []>([]);
+const thirdpartyMap = ref<Array<{ device_id: string; ihost_serial: string; }> | []>([]);
 
 // 获取指定 room 的 thing
 const getTingByRoom = (familyId: string, roomId: string) => {
@@ -71,16 +71,18 @@ const handleOpenThirdparty = (thing: ThingListItem) => {
   thirdpartyDialogVisible.value = true;
 };
 
-// 设备同步映射
+
 const getDeviceMap = async () => {
-  const eWelinkAt = localStorage.getItem('accessToken');
-  const iHost = localStorage.getItem('iHost');
-  const at = localStorage.getItem('iHostToken');
-  if (eWelinkAt && iHost && at) {
-    const res = await getThirdpartyMap();
-    thirdpartyMap.value = res.data.newMap || [];
-  }
-}
+  const res = await getThirdpartyDevice();
+  const list = res.data?.device_list || [] ;
+  thirdpartyMap.value = list
+    .filter((d: { [key: string]: any }) => d.serial_number && d.third_serial_number)
+    .map((d: { [key: string]: any }) => ({
+      device_id: d.third_serial_number,
+      ihost_serial: d.serial_number
+    }));
+  console.log(thirdpartyMap.value);
+};
 
 onMounted(async () => {
   thingLoading.value = true;
@@ -157,7 +159,8 @@ onMounted(async () => {
       </div>
     </template>
   </el-dialog>
-  <component :is="currentDeviceModel" v-model="deviceDialogVisible" :thing="currentThing" :thirdpart-map="thirdpartyMap" />
+  <component :is="currentDeviceModel" v-model="deviceDialogVisible" :thing="currentThing"
+    :thirdpart-map="thirdpartyMap" />
   <thirdpartyModel v-model="thirdpartyDialogVisible" :thing="currentThing" @get-map="getDeviceMap" />
 </template>
 
