@@ -7,6 +7,8 @@ import { useUserStore } from '@/store/userStore';
 import { updateThirdpartyDevice } from '@/api/open-api/thirdparty';
 import { debounce } from 'lodash-es'
 import { ElMessage } from "element-plus";
+import { ArrowRight } from '@element-plus/icons-vue';
+import WeeklyModel from './components/weekly.vue';
 
 const modelValue = defineModel<boolean>();
 const props = defineProps<{
@@ -17,6 +19,7 @@ const wsStore = useWsStore();
 const userStore = useUserStore();
 
 const loading = ref<boolean>(false)
+const weeklyVisabled = ref<boolean>(false);
 
 // 设备是否已同步到 iHost
 const isSynced = computed(() =>
@@ -37,7 +40,6 @@ const changeByStep = (type: 'add' | 'minus') => {
         targetTemperature.value -= 5;
     }
     debouncedSetTarget();
-    // setTargetpoint()
 };
 
 const modeOptions: Array<{ mode: string, text: string, targetText: string }> = [
@@ -121,6 +123,10 @@ const setMode = async (mode: string) => {
     }
 }
 
+const openWeekly = () => {
+    weeklyVisabled.value = true
+}
+
 </script>
 
 <template>
@@ -152,7 +158,7 @@ const setMode = async (mode: string) => {
                     </div>
                     <el-button :icon="Plus" circle size="large" @click="changeByStep('add')" />
                 </div>
-                <div class="mode">
+                <div class="mode mb-[36px]">
                     <div class="font-[600] text-[16px]">模式</div>
                     <div class="flex justify-around pt-[20px] gap-[10px]">
                         <div v-for="mode in modeOptions" :key="mode.mode"
@@ -161,11 +167,24 @@ const setMode = async (mode: string) => {
                         </div>
                     </div>
                 </div>
+                <div>
+                    <div class="font-[600] text-[16px]">日程</div>
+                    <div class="flex justify-around pt-[20px] gap-[10px]" @click="openWeekly">
+                        <div class="weekly-item">
+                            <div class="font-bold">日程设置</div>
+                            <div class="flex h-[24px] items-center leading-[24px]">
+                                <span class="text-[14px] mr-[8px]">仅在自动模式下生效</span>
+                                <span class="h-[24px]"><el-icon :size="22"><ArrowRight /></el-icon></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <div v-else class="text-center">
             设备离线，请检查设备状态
         </div>
+        <WeeklyModel v-model="weeklyVisabled" :thing="thing" />
     </el-dialog>
 </template>
 
@@ -191,5 +210,19 @@ const setMode = async (mode: string) => {
     line-height: 100px;
     font-size: 16px;
     cursor: pointer;
+}
+
+.weekly-item{
+    height: 66px;
+    flex: 1;
+    padding: 0 24px;
+    border-radius: 14px;
+    background-color: rgb(204, 204, 204, .25);
+    text-align: center;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 </style>

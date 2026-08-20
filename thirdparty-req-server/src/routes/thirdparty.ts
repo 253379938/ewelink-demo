@@ -44,14 +44,22 @@ thirdpartyRouter.post('/open-api/thirdparty/event', async (req, res, next) => {
 // 设备状态更新
 thirdpartyRouter.post('/open-api/device', async (req, res, next) => {
   try {
-    const { params, deviceId } = req.body ?? {};
+    const { params, deviceId, name } = req.body ?? {};
     const ihost = getIHostCred();
     const { data: { device_list } } = await getThirdpartyDevice(ihost?.at as string, ihost?.url as string);
     const device = device_list.filter((d: { [key: string]: any }) => d.third_serial_number === deviceId);
     const serial_number = device[0].serial_number as string;
-    const state = buildEndpoint[device[0].model as keyof typeof buildEndpoint]?.paramsToIHostState(params);
-    const data: any = await updateThirdpartyDevice(state, serial_number, deviceId, ihost?.at ?? '', ihost?.url ?? '');
+    if (name === 'DeviceStatesChangeReport') {
+      const state = buildEndpoint[device[0].model as keyof typeof buildEndpoint]?.paramsToIHostState(params);
+    const data: any = await updateThirdpartyDevice(state, serial_number, deviceId, ihost?.at ?? '', ihost?.url ?? '', name);
     res.json({ status: 'ok', data });
+    }
+    if (name === 'DeviceInformationUpdatedReport') {
+      const state = buildEndpoint[device[0].model as keyof typeof buildEndpoint]?.paramsToIHostCapabilities(params);
+    const data: any = await updateThirdpartyDevice(state, serial_number, deviceId, ihost?.at ?? '', ihost?.url ?? '', name);
+    res.json({ status: 'ok', data });
+    }
+    
   } catch (err) {
     next(err);
   }
@@ -96,7 +104,7 @@ thirdpartyRouter.post('/open-api/device/:deviceId', async (req, res, next) => {
       if ('manTargetTemp' in params) {
         const ihost = getIHostCred();
         const state = buildEndpoint[device[0].model as keyof typeof buildEndpoint].paramsToIHostState({ workMode: '0' });
-        await updateThirdpartyDevice(state, endpoint.serial_number, endpoint.third_serial_number, ihost?.at ?? '', ihost?.url ?? '');
+        await updateThirdpartyDevice(state, endpoint.serial_number, endpoint.third_serial_number, ihost?.at ?? '', ihost?.url ?? '', 'DeviceStatesChangeReport');
       }
     } else {
       res.json({

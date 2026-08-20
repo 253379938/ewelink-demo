@@ -22,11 +22,18 @@ export const thirdpartyDevice = (eWeLinkEvent: any) => {
         })
 }
 
-// update thirdparty device
-export const updateThirdpartyDevice = (params: any, deviceId: string) => {
+// update thirdparty device state
+export const updateThirdpartyDevice = (params: any, deviceId: string ) => {
     return requestOpenApi.post('/open-api/device',
         {
-            params, deviceId,
+            params, deviceId, name:'DeviceStatesChangeReport'
+        })
+}
+// update thirdparty device Capability
+export const updateThirdpartyCapability = (params: any, deviceId: string) => {
+    return requestOpenApi.post('/open-api/device',
+        {
+            params, deviceId, name:'DeviceInformationUpdatedReport'
         })
 }
 

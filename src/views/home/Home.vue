@@ -81,15 +81,18 @@ const handleOpenDelete = (thing: ThingListItem) => {
 };
 
 const getDeviceMap = async () => {
-  const res = await getThirdpartyDevice();
-  const list = res.data?.device_list || [] ;
-  thirdpartyMap.value = list
-    .filter((d: { [key: string]: any }) => d.serial_number && d.third_serial_number)
-    .map((d: { [key: string]: any }) => ({
-      device_id: d.third_serial_number,
-      ihost_serial: d.serial_number
-    }));
-  console.log(thirdpartyMap.value);
+  try {
+    const res = await getThirdpartyDevice();
+    const list = res.data?.device_list || [];
+    thirdpartyMap.value = list
+      .filter((d: { [key: string]: any }) => d.serial_number && d.third_serial_number)
+      .map((d: { [key: string]: any }) => ({
+        device_id: d.third_serial_number,
+        ihost_serial: d.serial_number
+      }))
+  } catch {
+    throw new Error('get map err')
+  }
 };
 
 onMounted(async () => {

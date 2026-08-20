@@ -12,7 +12,7 @@ export function buildEndpointUIID
         third_serial_number: deviceid,
         name,
         display_category: category,
-        capabilities: paramsToIHostCapabilities(capabilities, params),
+        capabilities: paramsToIHostCapabilities(params, capabilities)!,
         state: paramsToIHostState(params),
         manufacturer: brandName || '',
         model: productModel || '',
@@ -97,16 +97,16 @@ export function stateToParams(state: { [key: string]: any }) {
 }
 
 export type Capabilities = {
-            capability: string;
-            permission: string;
-            name?: string;
-            settings?: Record<string, any>;
-        }[]
+    capability: string;
+    permission: string;
+    name?: string;
+    settings?: Record<string, any>;
+}[]
 
 // eWeLink params → iHost capabilities
-export function paramsToIHostCapabilities(capabilities: Capabilities, params: { [key: string]: any }) {
-    const iHostCapabilities = capabilities;
-
+export function paramsToIHostCapabilities(params: { [key: string]: any }, capabilities?: Capabilities,) {
+    let iHostCapabilities;
+    if (capabilities) iHostCapabilities = capabilities;
     // weeklySchedule
     const daysMap: { [key: string]: string } = {
         mon: 'Monday', tues: 'Tuesday', wed: 'Wednesday', thur: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday'
@@ -130,9 +130,16 @@ export function paramsToIHostCapabilities(capabilities: Capabilities, params: { 
             weeklyScheduleValue[value] = parseDay(params[key]);
         }
     }
-    const auto = iHostCapabilities.find(c => c.capability === "thermostat-target-setpoint" && c.name === "auto-mode")!;
-    auto.settings!.weeklySchedule.value = { ...auto.settings!.weeklySchedule.value, ...weeklyScheduleValue }
-    return iHostCapabilities;
+    if (capabilities) {
+        const auto = iHostCapabilities!.find(c => c.capability === "thermostat-target-setpoint" && c.name === "auto-mode")!;
+        auto.settings!.weeklySchedule.value = { ...auto.settings!.weeklySchedule.value, ...weeklyScheduleValue }
+        return iHostCapabilities;
+    } else {
+        const auto = uiidConfig['TRVZB'].capabilities.find(c => c.name === 'auto-mode');
+        if(!auto || ! auto.settings || !auto.settings.weeklySchedule || !auto.settings.weeklySchedule.value) return
+        auto.settings.weeklySchedule.value = {...auto.settings.weeklySchedule.value, ...weeklyScheduleValue}
+        return [auto]
+    }
 }
 
 // iHost capabilities → eWeLink params
@@ -143,19 +150,18 @@ export function capabilitiesToParams(capabilities: Capabilities): { [key: string
     const auto = capabilities.find(
         c => c.capability === "thermostat-target-setpoint" && c.name === "auto-mode"
     );
-    
     if (!auto?.settings?.weeklySchedule?.value) {
         return params;
     }
     const weeklyScheduleValue = auto.settings.weeklySchedule.value;
     const reverseDaysMap: Record<string, string> = {
-        Monday:    'mon',
-        Tuesday:   'tues',
+        Monday: 'mon',
+        Tuesday: 'tues',
         Wednesday: 'wed',
-        Thursday:  'thur',
-        Friday:    'fri',
-        Saturday:  'sat',
-        Sunday:    'sun'
+        Thursday: 'thur',
+        Friday: 'fri',
+        Saturday: 'sat',
+        Sunday: 'sun'
     };
 
     // 编码单个日期的 6 个时间段为 48 位十六进制字符串

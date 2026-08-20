@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { getOpenApiAt, thirdpartyDevice } from '@/api/open-api/thirdparty';
 import type { ThingListItem } from '../../types';
 
@@ -13,10 +13,10 @@ const iHostForm = reactive<{ iHostUrl: string; }>({
     iHostUrl: '',
 });
 
-let iHostUrl = localStorage.getItem('iHost');
-const hasIHost = computed(() => iHostUrl && iHostUrl !== '')
+const iHostUrl = ref(localStorage.getItem('iHost') || '');
+const hasIHost = computed(() => iHostUrl.value && iHostUrl.value !== '');
 
-const handleConfirm = async () => {    
+const handleConfirm = async () => {        
     try {
         if (!hasIHost.value) {
             // phoneNumber 作为 app_name
@@ -24,6 +24,7 @@ const handleConfirm = async () => {
             await getOpenApiAt(iHostForm.iHostUrl, app_name);
 
             localStorage.setItem('iHost', iHostForm.iHostUrl);
+            iHostUrl.value = iHostForm.iHostUrl;
         }
         await thirdpartyDevice(props.thing?.itemData);
     } catch {
@@ -38,7 +39,7 @@ const handleConfirm = async () => {
 <template>
     <el-dialog v-model="modelValue" :title="hasIHost ? '是否确认同步该设备' : '请先获取 iHost 凭证'" width="420" align-center>
         <el-form v-if="!hasIHost" :model="iHostForm" label-width="auto" style="max-width: 600px">
-            <el-form-item label="iHost IP">
+            <el-form-item label="iHost 访问地址">
                 <el-input v-model="iHostForm.iHostUrl" />
             </el-form-item>
         </el-form>

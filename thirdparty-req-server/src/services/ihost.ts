@@ -53,13 +53,14 @@ export const thirdpartyDevice = (device: IHostDevice, at: string, iHost: string)
 }
 
 // 设备状态更新
-export const updateThirdpartyDevice = (state: any, serial_number: string, third_serial_number:string, at: string, iHost: string) => {
-    const url = new URL('/open-api/v2/rest/thirdparty/event', iHost)
+export const updateThirdpartyDevice = (state: any, serial_number: string, third_serial_number:string, at: string, iHost: string, name: string) => {
+  const url = new URL('/open-api/v2/rest/thirdparty/event', iHost)
+  const payload = name === 'DeviceStatesChangeReport' ? { state } : { capabilities: state }
     return http.post(url.toString(),
         {
           event: {
             header: {
-              name: "DeviceStatesChangeReport",
+              name,
               message_id: uuidv4(),
               version: "2"
             },
@@ -67,9 +68,7 @@ export const updateThirdpartyDevice = (state: any, serial_number: string, third_
               serial_number,
               third_serial_number
             },
-            payload: {
-              state,
-            },
+            payload,
             }
         }, {
         headers: {
