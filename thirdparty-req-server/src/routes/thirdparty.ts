@@ -34,7 +34,7 @@ thirdpartyRouter.post('/open-api/thirdparty/event', async (req, res, next) => {
     const { eWeLinkEvent } = req.body ?? {};
     const ihost = getIHostCred();
     const device = buildEndpoint[eWeLinkEvent.productModel as keyof typeof buildEndpoint].buildEndpointUIID(eWeLinkEvent);
-    const data: any = await thirdpartyDevice(device, ihost?.at ?? '', ihost?.url ?? '');
+    const data = await thirdpartyDevice(device, ihost?.at ?? '', ihost?.url ?? '');
     res.json({ status: 'ok', data });
   } catch (err) {
     next(err);
@@ -51,12 +51,12 @@ thirdpartyRouter.post('/open-api/device', async (req, res, next) => {
     const serial_number = device[0].serial_number as string;
     if (name === 'DeviceStatesChangeReport') {
       const state = buildEndpoint[device[0].model as keyof typeof buildEndpoint]?.paramsToIHostState(params);
-    const data: any = await updateThirdpartyDevice(state, serial_number, deviceId, ihost?.at ?? '', ihost?.url ?? '', name);
+    const data = await updateThirdpartyDevice(state, serial_number, deviceId, ihost?.at ?? '', ihost?.url ?? '', name);
     res.json({ status: 'ok', data });
     }
     if (name === 'DeviceInformationUpdatedReport') {
       const state = buildEndpoint[device[0].model as keyof typeof buildEndpoint]?.paramsToIHostCapabilities(params);
-    const data: any = await updateThirdpartyDevice(state, serial_number, deviceId, ihost?.at ?? '', ihost?.url ?? '', name);
+    const data = await updateThirdpartyDevice(state, serial_number, deviceId, ihost?.at ?? '', ihost?.url ?? '', name);
     res.json({ status: 'ok', data });
     }
     

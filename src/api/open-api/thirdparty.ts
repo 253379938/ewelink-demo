@@ -1,5 +1,5 @@
 import requestOpenApi from "@/request/requestOpenApi";
-
+import type { DeviceItemData } from "@/views/home/types";
 // 获取 open api at（重新请求时取消上一次，避免 server 起多个轮询）
 let getAtController: AbortController | null = null
 export const getOpenApiAt = (iHost: string, app_name: string) => {
@@ -15,7 +15,7 @@ export const getOpenApiAt = (iHost: string, app_name: string) => {
 }
 
 // thirdparty device
-export const thirdpartyDevice = (eWeLinkEvent: any) => {
+export const thirdpartyDevice = (eWeLinkEvent: DeviceItemData) => {
     return requestOpenApi.post('/open-api/thirdparty/event',
         {
             eWeLinkEvent,
@@ -23,14 +23,14 @@ export const thirdpartyDevice = (eWeLinkEvent: any) => {
 }
 
 // update thirdparty device state
-export const updateThirdpartyDevice = (params: any, deviceId: string ) => {
+export const updateThirdpartyDevice = (params: Record<string, any>, deviceId: string ) => {
     return requestOpenApi.post('/open-api/device',
         {
             params, deviceId, name:'DeviceStatesChangeReport'
         })
 }
 // update thirdparty device Capability
-export const updateThirdpartyCapability = (params: any, deviceId: string) => {
+export const updateThirdpartyCapability = (params: Record<string, any>, deviceId: string) => {
     return requestOpenApi.post('/open-api/device',
         {
             params, deviceId, name:'DeviceInformationUpdatedReport'

@@ -29,7 +29,7 @@ const retryTimeOut = 3000
 const maxRetryTimeOut = 30000
 
 // 云端推送设备状态转发给 web
-type StateHandler = (data: { action: string; deviceid: string; params: any }) => void
+type StateHandler = (data: { action: string; deviceid: string; params: Record<string, any> }) => void
 let stateHandler: StateHandler | null = null
 export function onState(handler: StateHandler) {
   stateHandler = handler
