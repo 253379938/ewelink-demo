@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { FamilyData } from '@/views/home/types'
-import request from '@/request/request'
+import { getFamilys } from '@/api/ewelink-api/api';
 
 export const useFamilyStore = defineStore('family', () => {
 
@@ -9,7 +9,7 @@ export const useFamilyStore = defineStore('family', () => {
 
   const getFamilyList = async () => {
     try {
-      const res = await request.get("/v2/family");
+      const res = await getFamilys();
         familyListData.value = res.data;
     } catch {
     } 

@@ -45,7 +45,7 @@ export function setupWsServer(server: Server) {
         const msg = JSON.parse(data.toString());
         // web ws 握手 (转发到云端 ws)
         if (msg.action === "userOnline" && msg.at && msg.apikey && msg.appid) {
-          saveEWeLinkCred(msg.at, msg.apikey, msg.appid);
+          // saveEWeLinkCred(msg.at, msg.apikey, msg.appid);
           connectEWeLink({
             at: msg.at,
             apikey: msg.apikey,

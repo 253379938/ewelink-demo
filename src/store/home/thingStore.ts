@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import type { ThingListItem, SwitchItem } from "@/views/home/types";
-import request from "@/request/request";
+import { getThings } from "@/api/ewelink-api/api";
 
 export const useThingStore = defineStore("thing", () => {
   const familyThingsMap = ref<Map<string, ThingListItem[]>>(new Map());
@@ -12,7 +12,7 @@ export const useThingStore = defineStore("thing", () => {
       const accessToken = localStorage.getItem("accessToken");
       if (!accessToken) throw new Error("No token");
 
-      const res = await request.get(`/v2/device/thing?familyid=${familyId}`);
+      const res = await getThings(familyId);
       familyThingsMap.value.set(familyId, res.data.thingList);
     } catch {}
   };

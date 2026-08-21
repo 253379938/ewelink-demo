@@ -7,7 +7,6 @@ export function createApp() {
 
   app.use(express.json())
 
-  // 设备同步 open-api router
   app.use(routes)
 
   // 错误处理

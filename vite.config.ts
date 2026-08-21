@@ -23,9 +23,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://cn-apia.coolkit.cn',
+        target: 'http://localhost:3001',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
       },
       '/open-api': {
         target: 'http://localhost:3001',

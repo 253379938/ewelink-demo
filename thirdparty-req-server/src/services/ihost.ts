@@ -31,10 +31,10 @@ export async function getAccessToken(iHost: string, app_name: string, shouldAbor
     if (data.error === 0 && token) {
       return token
     }
-    console.log(`getAccessToken 第 ${attempt} 次轮询 error=${data?.error} 3s 后重试`)
+    console.log(`iHost open token 第 ${attempt} 次轮询 error=${data?.error} 3s 后重试`)
     await new Promise((r) => setTimeout(r, 3000))
   }
-  throw new Error('获取 iHost access_token 超时，请确认 iHost 已授权')
+  throw new Error('获取 iHost open token 超时')
 }
 
 // 同步设备

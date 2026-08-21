@@ -35,6 +35,7 @@ thirdpartyRouter.post('/open-api/thirdparty/event', async (req, res, next) => {
     const ihost = getIHostCred();
     const device = buildEndpoint[eWeLinkEvent.productModel as keyof typeof buildEndpoint].buildEndpointUIID(eWeLinkEvent);
     const data = await thirdpartyDevice(device, ihost?.at ?? '', ihost?.url ?? '');
+    console.log('同步设备, eWeLink --> iHost', device);
     res.json({ status: 'ok', data });
   } catch (err) {
     next(err);
@@ -51,15 +52,17 @@ thirdpartyRouter.post('/open-api/device', async (req, res, next) => {
     const serial_number = device[0].serial_number as string;
     if (name === 'DeviceStatesChangeReport') {
       const state = buildEndpoint[device[0].model as keyof typeof buildEndpoint]?.paramsToIHostState(params);
-    const data = await updateThirdpartyDevice(state, serial_number, deviceId, ihost?.at ?? '', ihost?.url ?? '', name);
-    res.json({ status: 'ok', data });
+      const data = await updateThirdpartyDevice(state, serial_number, deviceId, ihost?.at ?? '', ihost?.url ?? '', name);
+      console.log('state update, eWeLink --> iHost', state);
+      res.json({ status: 'ok', data });
     }
     if (name === 'DeviceInformationUpdatedReport') {
       const state = buildEndpoint[device[0].model as keyof typeof buildEndpoint]?.paramsToIHostCapabilities(params);
-    const data = await updateThirdpartyDevice(state, serial_number, deviceId, ihost?.at ?? '', ihost?.url ?? '', name);
-    res.json({ status: 'ok', data });
+      const data = await updateThirdpartyDevice(state, serial_number, deviceId, ihost?.at ?? '', ihost?.url ?? '', name);
+      console.log('capabilities update, eWeLink --> iHost', state);
+      res.json({ status: 'ok', data });
     }
-    
+
   } catch (err) {
     next(err);
   }
@@ -72,7 +75,7 @@ thirdpartyRouter.post('/open-api/device/:deviceId', async (req, res, next) => {
     const ihost = getIHostCred();
     const { data: { device_list } } = await getThirdpartyDevice(ihost?.at as string, ihost?.url as string);
     const device = device_list.filter((d: { [key: string]: any }) => d.third_serial_number === endpoint.third_serial_number);
-    let params ={};
+    let params = {};
     if (header.name === 'UpdateDeviceStates') {
       params = buildEndpoint[device[0].model as keyof typeof buildEndpoint].stateToParams(payload.state);
     }
@@ -81,7 +84,7 @@ thirdpartyRouter.post('/open-api/device/:deviceId', async (req, res, next) => {
     }
     // iHost 回调 → server 转发 eWeLink 云端 WS 下发控制指令
     const resp = await ewelinkWs.sendUpdate(endpoint.third_serial_number, params).catch((err: Error) =>
-      console.error('[ewelink ws] webhook sendUpdate err', err),
+      console.error('ewelink ws sendUpdate err', err),
     );
     if (resp.error === 0) {
       res.json({
@@ -101,6 +104,7 @@ thirdpartyRouter.post('/open-api/device/:deviceId', async (req, res, next) => {
           }
         }
       });
+      console.log('update, iHost --> EWelink', params);
       if ('manTargetTemp' in params) {
         const ihost = getIHostCred();
         const state = buildEndpoint[device[0].model as keyof typeof buildEndpoint].paramsToIHostState({ workMode: '0' });
@@ -136,6 +140,7 @@ thirdpartyRouter.get('/open-api/devices', async (_req, res, next) => {
     const ihost = getIHostCred();
     const { data: { device_list } } = await getThirdpartyDevice(ihost?.at as string, ihost?.url as string);
     res.json({ status: 'ok', data: { device_list } });
+    console.log('search iHost devices', device_list);
   } catch (err) {
     next(err);
   }
@@ -148,10 +153,12 @@ thirdpartyRouter.delete('/open-api/device/:deviceId', async (req, res, next) => 
     const ihost = getIHostCred();
     const { data: { device_list } } = await getThirdpartyDevice(ihost?.at as string, ihost?.url as string);
     const device = device_list.filter((d: { [key: string]: any }) => d.third_serial_number === deviceId);
-    
+
     const { data } = await deleteThirdpartyDevice(ihost?.at as string, ihost?.url as string, device[0].serial_number);
     res.json({ status: 'ok', data });
+    console.log('cancel thirdparty device', device);
   } catch (err) {
     next(err);
   }
 })
+
