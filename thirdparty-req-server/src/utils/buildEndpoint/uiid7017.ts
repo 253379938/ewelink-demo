@@ -2,6 +2,8 @@ import type { EWeLinkDevice } from "../../type/devices.ts";
 import { uiidConfig } from "../../constants/uiid/index.ts";
 import { config } from "../../config.ts";
 import type { Params } from "../../type/params.ts";
+import os from 'os';
+const computerName = os.hostname();
 
 // transform endpoints
 export function buildEndpointUIID
@@ -18,14 +20,14 @@ export function buildEndpointUIID
         manufacturer: brandName || '',
         model: productModel || '',
         firmware_version: params?.fwVersion || '',
-        service_address: `http://192.168.1.110:${config.port}/open-api/device/${deviceid}`,
+        service_address: `http://${computerName}.local:${config.port}/open-api/device/${deviceid}`,
     };
 }
 
 // eWeLink params → iHost state
 export function paramsToIHostState(params: { [key: string]: any }) {
     const iHostState: { [key: string]: any } = {};
-
+    // 工作模式
     const workModeMap = { '0': 'MANUAL', '1': 'ECO', '2': 'AUTO' };
     if (params.workMode in workModeMap) {
         iHostState['thermostat'] = {
@@ -33,6 +35,7 @@ export function paramsToIHostState(params: { [key: string]: any }) {
         };
     }
 
+    //工作状态
     const workStateMap = { '0': 'INACTIVE', '1': 'HEATING' };
     if (params.workState in workStateMap) {
         iHostState['thermostat']['adaptive-recovery-status'] =
@@ -63,6 +66,10 @@ export function paramsToIHostState(params: { [key: string]: any }) {
 
     if (params.temperature && params.temperature !== null) iHostState['temperature'] = { temperature: params.temperature / 10 };
     if (params.subDevRssi && params.subDevRssi !== null) iHostState['rssi'] = { rssi: params.subDevRssi };
+    // 童锁
+    if (params.childLock !== undefined) iHostState['child-lock'] = { powerState: params.childLock ? 'on' : 'off' };
+    // 开窗检测
+    if (params.windowSwitch !== undefined) iHostState['window-detection'] = { powerState: params.windowSwitch ? 'on' : 'off' };
 
     return iHostState;
 }
@@ -73,10 +80,22 @@ export function stateToParams(state: { [key: string]: any }) {
 
     // thermostat-mode → workMode
     const mode = state?.thermostat?.['thermostat-mode']?.thermostatMode;
-    const modeMap: { [key: string]: string } = { MANUAL: '0', ECO: '1', AUTO: '2' };
-    if (mode in modeMap) {
-        params.workMode = modeMap[mode as keyof typeof modeMap];
+    if (mode) {
+        const modeMap: { [key: string]: string } = { MANUAL: '0', ECO: '1', AUTO: '2' };
+        if (mode in modeMap) {
+            params.workMode = modeMap[mode as keyof typeof modeMap];
+        }
     }
+
+    // workState
+    const workState = state?.thermostat?.['adaptive-recovery-status']?.thermostatMode;
+    if (workState) {
+        const workStateMap = { '0': 'INACTIVE', '1': 'HEATING' };
+        if (mode in workStateMap) {
+            params.workMode = workStateMap[workState as keyof typeof workStateMap];
+        }
+    }
+
 
     // thermostat-target-setpoint
     const setpoints = state?.['thermostat-target-setpoint'];
@@ -94,6 +113,17 @@ export function stateToParams(state: { [key: string]: any }) {
         }
     }
 
+    // 童锁
+    const childLock = state?.['child-lock']?.powerState;
+    if (childLock) {
+        params.childLock = childLock === 'on' ? true : false
+    }
+
+    // 开窗检测
+    const windowSwitch = state?.['window-detection']?.powerState;
+    if (windowSwitch) {
+        params.windowSwitch = windowSwitch === 'on' ? true : false
+    }
     return params;
 }
 
@@ -108,7 +138,7 @@ export type Capabilities = {
 export function paramsToIHostCapabilities(params: { [key: string]: any }, capabilities?: Capabilities,) {
     let iHostCapabilities;
     if (capabilities) iHostCapabilities = capabilities;
-    // weeklySchedule
+    // weeklySchedule 
     const daysMap: { [key: string]: string } = {
         mon: 'Monday', tues: 'Tuesday', wed: 'Wednesday', thur: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday'
     }
@@ -132,15 +162,30 @@ export function paramsToIHostCapabilities(params: { [key: string]: any }, capabi
         }
     }
     if (capabilities) {
+        // 日程
         const auto = iHostCapabilities!.find(c => c.capability === "thermostat-target-setpoint" && c.name === "auto-mode")!;
         auto.settings!.weeklySchedule.value = { ...auto.settings!.weeklySchedule.value, ...weeklyScheduleValue }
+
+        // 温度校准
+        const temp = iHostCapabilities!.find(c => c.capability === "temperature")!;
+        temp.settings!.temperatureCalibration.value = params.tempCorrection / 10;
         return iHostCapabilities;
     } else {
+        // 日程
         const auto = uiidConfig['TRVZB'].capabilities.find(c => c.name === 'auto-mode');
-        if(!auto || ! auto.settings || !auto.settings.weeklySchedule || !auto.settings.weeklySchedule.value) return
-        auto.settings.weeklySchedule.value = {...auto.settings.weeklySchedule.value, ...weeklyScheduleValue}
-        return [auto]
+        if (auto && auto.settings && auto.settings.weeklySchedule && auto.settings.weeklySchedule.value && Object.keys(weeklyScheduleValue).length > 0) {
+            auto.settings.weeklySchedule.value = { ...auto.settings.weeklySchedule.value, ...weeklyScheduleValue }
+            return [auto]
+        }
+
+        //温度校准
+        const temp = uiidConfig['TRVZB'].capabilities.find(c => c.capability === 'temperature');
+        if (temp && temp.settings && temp.settings.temperatureCalibration) {
+            temp.settings.temperatureCalibration.value = params.tempCorrection / 10
+            return [temp]
+        }
     }
+
 }
 
 // iHost capabilities → eWeLink params
@@ -151,46 +196,50 @@ export function capabilitiesToParams(capabilities: Capabilities): { [key: string
     const auto = capabilities.find(
         c => c.capability === "thermostat-target-setpoint" && c.name === "auto-mode"
     );
-    if (!auto?.settings?.weeklySchedule?.value) {
-        return params;
-    }
-    const weeklyScheduleValue = auto.settings.weeklySchedule.value;
-    const reverseDaysMap: Record<string, string> = {
-        Monday: 'mon',
-        Tuesday: 'tues',
-        Wednesday: 'wed',
-        Thursday: 'thur',
-        Friday: 'fri',
-        Saturday: 'sat',
-        Sunday: 'sun'
-    };
+    if (auto?.settings?.weeklySchedule?.value) {
+        const weeklyScheduleValue = auto.settings.weeklySchedule.value;
+        const reverseDaysMap: Record<string, string> = {
+            Monday: 'mon',
+            Tuesday: 'tues',
+            Wednesday: 'wed',
+            Thursday: 'thur',
+            Friday: 'fri',
+            Saturday: 'sat',
+            Sunday: 'sun'
+        };
 
-    // 编码单个日期的 6 个时间段为 48 位十六进制字符串
-    function encodeDay(
-        dayArray: Array<{ startTimeInMinutes: number; upperSetpoint: number; lowerSetpoint?: number }>
-    ): string {
-        let result = '';
-        for (let i = 0; i < 6; i++) {
-            const slot = dayArray[i] || { startTimeInMinutes: 0, upperSetpoint: 0, lowerSetpoint: 0 };
-            const startHex = slot.startTimeInMinutes.toString(16).padStart(4, '0');
-            const tempHex = Math.round(slot.upperSetpoint * 10).toString(16).padStart(4, '0');
-            result += startHex + tempHex;
+        // 编码 48 位十六进制字符串
+        function encodeDay(
+            dayArray: Array<{ startTimeInMinutes: number; upperSetpoint: number; lowerSetpoint?: number }>
+        ): string {
+            let result = '';
+            for (let i = 0; i < 6; i++) {
+                const slot = dayArray[i] || { startTimeInMinutes: 0, upperSetpoint: 0, lowerSetpoint: 0 };
+                const startHex = slot.startTimeInMinutes.toString(16).padStart(4, '0');
+                const tempHex = Math.round(slot.upperSetpoint * 10).toString(16).padStart(4, '0');
+                result += startHex + tempHex;
+            }
+            return result;
         }
-        return result;
+
+        for (const [fullName, shortName] of Object.entries(reverseDaysMap)) {
+            const dayData = weeklyScheduleValue[fullName];
+            if (Array.isArray(dayData) && dayData.length > 0) {
+                params[shortName] = encodeDay(dayData);
+            }
+        }
     }
 
-    for (const [fullName, shortName] of Object.entries(reverseDaysMap)) {
-        const dayData = weeklyScheduleValue[fullName];
-        if (Array.isArray(dayData) && dayData.length > 0) {
-            params[shortName] = encodeDay(dayData);
-        }
+    // 温度校准
+    const temp = capabilities.find(c => c.capability === 'temperature');
+    if (temp && temp.settings && temp.settings.temperatureCalibration) {
+        params.tempCorrection = temp.settings.temperatureCalibration.value * 10;
     }
 
     return params;
 }
 
 // param - -> name(state/capabilities) & payload
-
 export function getNameAndPayloadFromParams(params: Params, device: Record<string, any>) {
     // online update
     if (params.action === 'sysmsg' && 'online' in params.params) {
@@ -204,31 +253,32 @@ export function getNameAndPayloadFromParams(params: Params, device: Record<strin
     if (params.action !== 'update') return {}
     // 检验 state 还是 capabilities
     const days = ['mon', 'tues', 'wed', 'thur', 'fri', 'sat', 'sun'];
-      const isWeeklySchedule = days.some(day => day in params.params);
-      const name = isWeeklySchedule ? 'DeviceInformationUpdatedReport' : 'DeviceStatesChangeReport';  
-      let payload;
-      // state 修改
-      if (name === 'DeviceStatesChangeReport') {
+    const isWeeklySchedule = days.some(day => day in params.params);
+    const isCapa = isWeeklySchedule || ('tempCorrection' in params.params)
+    const name = isCapa ? 'DeviceInformationUpdatedReport' : 'DeviceStatesChangeReport';
+    let payload;
+    // state 修改
+    if (name === 'DeviceStatesChangeReport') {
         // 目标温度修改需补全 eco & auto
         if ('manTargetTemp' in params.params) {
-          const newParams = {
-            autoTargetTemp: device.state['thermostat-target-setpoint']['auto-mode'].targetSetpoint * 10,
-            ecoTargetTemp: device.state['thermostat-target-setpoint']['eco-mode'].targetSetpoint * 10,
-            ...params.params
-          }      
-          const state = paramsToIHostState(newParams);
-          payload = { state }
-          console.log('state update, eWeLink --> iHost', state);
-        } else if('workMode' in params.params) {
-          const state = paramsToIHostState(params.params);
-          payload = { state }
-          console.log('state update, eWeLink --> iHost', state);
+            const newParams = {
+                autoTargetTemp: device.state['thermostat-target-setpoint']['auto-mode'].targetSetpoint * 10,
+                ecoTargetTemp: device.state['thermostat-target-setpoint']['eco-mode'].targetSetpoint * 10,
+                ...params.params
+            }
+            const state = paramsToIHostState(newParams);
+            payload = { state }
+            console.log('state update, eWeLink --> iHost', state);
+        } else if ('workMode' in params.params) {
+            const state = paramsToIHostState(params.params);
+            payload = { state }
+            console.log('state update, eWeLink --> iHost', state);
         } else {
             return {}
         }
-      }
-      // capabilities 修改
-      if (name === 'DeviceInformationUpdatedReport') {
+    }
+    // capabilities 修改
+    if (name === 'DeviceInformationUpdatedReport') {
         const capabilities = paramsToIHostCapabilities(params.params);
         console.log('capabilities update, eWeLink --> iHost', capabilities);
         payload = { capabilities: capabilities }

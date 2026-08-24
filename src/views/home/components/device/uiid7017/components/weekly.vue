@@ -4,6 +4,7 @@ import { Edit, Document, CirclePlus, Delete } from '@element-plus/icons-vue';
 import { computed, ref, watch } from 'vue';
 import { useWsStore } from '@/store/wsStore';
 import { useUserStore } from '@/store/userStore';
+import { ElMessageBox } from 'element-plus';
 
 const props = defineProps<{
     thing: ThingListItem;
@@ -195,10 +196,30 @@ const buttonConfig = computed(() => ({
     type: isEdited.value ? 'primary' : 'info',
     icon: isEdited.value ? Document : Edit,
 }));
+
+// 关闭前回调
+const handleBeforeClose = (done: () => void) => {
+    if (!isEdited.value) {
+        done();
+        return;
+    }
+    ElMessageBox.confirm('现在退出不会进行保存', '提示', {
+    confirmButtonText: '确定退出',
+    cancelButtonText: '取消',
+    type: 'warning',
+  })
+    .then(() => {
+      isEdited.value = false;
+      done();
+    })
+    .catch(() => {
+    });    
+}
+
 </script>
 
 <template>
-    <el-dialog v-model="modelValue" width="540" align-center>
+    <el-dialog v-model="modelValue" width="540" align-center :before-close="handleBeforeClose">
         <template #header>
             <div class="text-center font-bold text-lg">日程</div>
         </template>

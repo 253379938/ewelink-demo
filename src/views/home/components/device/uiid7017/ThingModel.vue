@@ -19,24 +19,6 @@ const userStore = useUserStore();
 
 const loading = ref<boolean>(false)
 const weeklyVisabled = ref<boolean>(false);
-
-const targetTemperature = computed<number>({
-    get: () => props.thing?.itemData.params.curTargetTemp,
-    set: (value) => {
-        if (props.thing) props.thing.itemData.params.curTargetTemp = value;
-    },
-});
-
-const changeByStep = (type: 'add' | 'minus') => {
-    if (type === 'add' && targetTemperature.value < 350) {
-        targetTemperature.value += 5;
-    }
-    if (type === 'minus' && targetTemperature.value > 40) {
-        targetTemperature.value -= 5;
-    }
-    debouncedSetTarget();
-};
-
 const modeOptions: Array<{ mode: string, text: string, targetText: string }> = [
     {
         mode: '1',
@@ -54,8 +36,28 @@ const modeOptions: Array<{ mode: string, text: string, targetText: string }> = [
         targetText: 'autoTargetTemp'
     },
 ];
-
 const currentMode = computed(() => props.thing?.itemData.params.workMode);
+const targetTemperature = computed({
+  get() {
+    const mode = props.thing?.itemData.params.workMode;
+    const targetKey = modeOptions.find(c => c.mode === mode)?.targetText!;
+    return props.thing?.itemData.params[targetKey];
+  },
+    set(value) {
+      props.thing.itemData.params.workMode = '0';
+      props.thing.itemData.params.manTargetTemp = value;
+  }
+});
+const changeByStep = (type: 'add' | 'minus') => {
+    if (type === 'add' && targetTemperature.value < 350) {
+        targetTemperature.value += 5;
+    }
+    if (type === 'minus' && targetTemperature.value > 40) {
+        targetTemperature.value -= 5;
+    }
+    debouncedSetTarget();
+};
+
 const setTargetpoint = async () => {
     const params = {
         manTargetTemp: targetTemperature.value,

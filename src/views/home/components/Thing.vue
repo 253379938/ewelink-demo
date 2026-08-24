@@ -53,7 +53,7 @@ const handleDelete = () => {
                 circle @click.stop="handleThirdparty" />
         </el-tooltip>
         <div v-else class="absolute top-2 right-2 text-xs text-blue-500">
-            <span @click.stop="handleDelete">已同步</span>
+            <span @click.stop="handleDelete" class="text-[red]">取消同步</span>
         </div>
     </div>
 </template>
