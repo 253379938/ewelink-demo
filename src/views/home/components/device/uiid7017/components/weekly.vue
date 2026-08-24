@@ -4,7 +4,6 @@ import { Edit, Document, CirclePlus, Delete } from '@element-plus/icons-vue';
 import { computed, ref, watch } from 'vue';
 import { useWsStore } from '@/store/wsStore';
 import { useUserStore } from '@/store/userStore';
-import { updateThirdpartyCapability } from '@/api/open-api/thirdparty';
 
 const props = defineProps<{
     thing: ThingListItem;
@@ -143,10 +142,6 @@ const saveDay = async () => {
                 sequence: Date.now(),
             }
         )
-        await updateThirdpartyCapability(
-            params,
-            props.thing?.itemData?.deviceid,
-        )
     } catch { } finally {
         loading.value = false;
         isEdited.value = false;
@@ -204,7 +199,7 @@ const buttonConfig = computed(() => ({
 
 <template>
     <el-dialog v-model="modelValue" width="540" align-center>
-        <template #title>
+        <template #header>
             <div class="text-center font-bold text-lg">日程</div>
         </template>
         <div class="pl-[12px] pr-[12px]" v-loading="loading">

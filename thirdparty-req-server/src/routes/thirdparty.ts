@@ -3,6 +3,7 @@ import { deleteThirdpartyDevice, getAccessToken, getThirdpartyDevice, thirdparty
 import { buildEndpoint } from '../utils/buildEndpoint/index.ts'
 import { getIHostCred, saveIHostCred } from '../db/index.ts'
 import * as ewelinkWs from '../services/ewelinkWs.ts'
+import type { Params } from '../type/params.ts'
 
 export const thirdpartyRouter = Router()
 
@@ -37,32 +38,6 @@ thirdpartyRouter.post('/open-api/thirdparty/event', async (req, res, next) => {
     const data = await thirdpartyDevice(device, ihost?.at ?? '', ihost?.url ?? '');
     console.log('同步设备, eWeLink --> iHost', device);
     res.json({ status: 'ok', data });
-  } catch (err) {
-    next(err);
-  }
-})
-
-// 设备状态更新
-thirdpartyRouter.post('/open-api/device', async (req, res, next) => {
-  try {
-    const { params, deviceId, name } = req.body ?? {};
-    const ihost = getIHostCred();
-    const { data: { device_list } } = await getThirdpartyDevice(ihost?.at as string, ihost?.url as string);
-    const device = device_list.filter((d: { [key: string]: any }) => d.third_serial_number === deviceId);
-    const serial_number = device[0].serial_number as string;
-    if (name === 'DeviceStatesChangeReport') {
-      const state = buildEndpoint[device[0].model as keyof typeof buildEndpoint]?.paramsToIHostState(params);
-      const data = await updateThirdpartyDevice(state, serial_number, deviceId, ihost?.at ?? '', ihost?.url ?? '', name);
-      console.log('state update, eWeLink --> iHost', state);
-      res.json({ status: 'ok', data });
-    }
-    if (name === 'DeviceInformationUpdatedReport') {
-      const state = buildEndpoint[device[0].model as keyof typeof buildEndpoint]?.paramsToIHostCapabilities(params);
-      const data = await updateThirdpartyDevice(state, serial_number, deviceId, ihost?.at ?? '', ihost?.url ?? '', name);
-      console.log('capabilities update, eWeLink --> iHost', state);
-      res.json({ status: 'ok', data });
-    }
-
   } catch (err) {
     next(err);
   }
@@ -106,9 +81,8 @@ thirdpartyRouter.post('/open-api/device/:deviceId', async (req, res, next) => {
       });
       console.log('update, iHost --> EWelink', params);
       if ('manTargetTemp' in params) {
-        const ihost = getIHostCred();
         const state = buildEndpoint[device[0].model as keyof typeof buildEndpoint].paramsToIHostState({ workMode: '0' });
-        await updateThirdpartyDevice(state, endpoint.serial_number, endpoint.third_serial_number, ihost?.at ?? '', ihost?.url ?? '', 'DeviceStatesChangeReport');
+        await updateThirdpartyDevice(state as Params);
       }
     } else {
       res.json({

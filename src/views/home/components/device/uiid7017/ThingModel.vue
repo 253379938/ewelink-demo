@@ -4,7 +4,6 @@ import { Minus, Plus } from '@element-plus/icons-vue';
 import { computed, ref } from 'vue';
 import { useWsStore } from '@/store/wsStore';
 import { useUserStore } from '@/store/userStore';
-import { updateThirdpartyDevice } from '@/api/open-api/thirdparty';
 import { debounce } from 'lodash-es'
 import { ElMessage } from "element-plus";
 import { ArrowRight } from '@element-plus/icons-vue';
@@ -21,10 +20,6 @@ const userStore = useUserStore();
 const loading = ref<boolean>(false)
 const weeklyVisabled = ref<boolean>(false);
 
-// 设备是否已同步到 iHost
-const isSynced = computed(() =>
-    props.thirdpartMap.some((m) => m.device_id === props.thing.itemData.deviceid)
-);
 const targetTemperature = computed<number>({
     get: () => props.thing?.itemData.params.curTargetTemp,
     set: (value) => {
@@ -78,16 +73,6 @@ const setTargetpoint = async () => {
             ElMessage.error('控制设备失败');
             throw new Error('update params err')
         }
-        const newParams = {
-            ...params,
-            workMode: '0',
-            ecoTargetTemp: props.thing?.itemData.params.ecoTargetTemp,
-            autoTargetTemp: props.thing?.itemData.params.autoTargetTemp
-        }
-        // 已同步上报 iHost
-        if (isSynced.value) {
-            await updateThirdpartyDevice(newParams, props.thing.itemData.deviceid)
-        }
     } catch (err) {
         console.error(err);
     }
@@ -112,10 +97,6 @@ const setMode = async (mode: string) => {
             ElMessage.error('控制设备失败');
             throw new Error('update params err')
         }
-        // 已同步上报 iHost
-        if (isSynced.value) {
-            await updateThirdpartyDevice(params, props.thing.itemData.deviceid)
-        }
     } catch (err) {
         console.error(err);
     } finally {
@@ -131,7 +112,7 @@ const openWeekly = () => {
 
 <template>
     <el-dialog v-model="modelValue" width="540" align-center>
-        <template #title>
+        <template #header>
             <div class="text-center font-bold text-lg">{{ thing?.itemData.name }}</div>
         </template>
         <div v-if="props.thing?.itemData.online" v-loading="loading">

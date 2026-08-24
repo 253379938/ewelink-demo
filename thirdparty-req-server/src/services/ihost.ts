@@ -1,6 +1,9 @@
 import axios from 'axios'
 import type { IHostDevice } from '../type/devices.ts'
 import { v4 as uuidv4 } from 'uuid';
+import { getIHostCred } from '../db/index.ts';
+import type { Params } from '../type/params.ts';
+import { buildEndpoint } from '../utils/buildEndpoint/index.ts';
 
 interface ApiResponse<T = any> {
   error: number;
@@ -26,7 +29,7 @@ export async function getAccessToken(iHost: string, app_name: string, shouldAbor
       params: { app_name },
     }) as unknown as ApiResponse
     console.log(data);
-    
+
     const token = data.data.token
     if (data.error === 0 && token) {
       return token
@@ -61,29 +64,35 @@ export const thirdpartyDevice = (device: IHostDevice, at: string, iHost: string)
 }
 
 // 设备状态更新
-export const updateThirdpartyDevice = (state: any, serial_number: string, third_serial_number:string, at: string, iHost: string, name: string) => {
-  const url = new URL('/open-api/v2/rest/thirdparty/event', iHost)
-  const payload = name === 'DeviceStatesChangeReport' ? { state } : { capabilities: state }
-    return http.post(url.toString(),
-        {
-          event: {
-            header: {
-              name,
-              message_id: uuidv4(),
-              version: "2"
-            },
-            endpoint: {
-              serial_number,
-              third_serial_number
-            },
-            payload,
-            }
-        }, {
-        headers: {
-            "Content-Type": 'application/json',
-            "Authorization": `Bearer ${at}`
-        }
-    })
+export const updateThirdpartyDevice = async (params: Params) => {
+  const iHostCred = getIHostCred();
+  const url = new URL('/open-api/v2/rest/thirdparty/event', iHostCred?.url)
+
+  const { data: { device_list } } = await getThirdpartyDevice(iHostCred?.at as string, iHostCred?.url as string);
+  const device = device_list.filter((d: { [key: string]: any }) => d.third_serial_number === params.deviceid)[0] as Record<string, any>;
+  if (!device || !device.model || device.model !== 'TRVZB') return
+  const { name, payload } = buildEndpoint[device.model as keyof typeof buildEndpoint].getNameAndPayloadFromParams(params, device);
+  if (!name || !payload) { return new Error('need name & payload, error: no support')}
+  return http.post(url.toString(),
+    {
+      event: {
+        header: {
+          name,
+          message_id: uuidv4(),
+          version: "2"
+        },
+        endpoint: {
+          serial_number: device.serial_number,
+          third_serial_number: device.third_serial_number
+        },
+        payload,
+      }
+    }, {
+    headers: {
+      "Content-Type": 'application/json',
+      "Authorization": `Bearer ${iHostCred?.at}`
+    }
+  })
 }
 
 // 查询同步设备

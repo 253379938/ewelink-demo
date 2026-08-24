@@ -1,6 +1,7 @@
 // server < --- > eWeLink 云端 WS
 import WebSocket from 'ws'
 import axios from 'axios'
+import { updateThirdpartyDevice } from './ihost.ts'
 
 interface WsCreds {
   at: string
@@ -144,9 +145,14 @@ export async function connect(credsIn: WsCreds): Promise<void> {
         item.resolve(msg)
       }
     }
-    // eWeLink 云端推送状态转发给 web
+    // eWeLink 云端推送状态转发给 web & 同步 iHost
     if (msg.action === 'update' && msg.deviceid && msg.params) {
-      stateHandler?.({ action:'update', deviceid: msg.deviceid, params: msg.params })
+      stateHandler?.({ action: 'update', deviceid: msg.deviceid, params: msg.params })
+      try {
+          updateThirdpartyDevice(msg)
+      } catch(err) {
+        throw new Error('update iHost err')
+      }
     }
     if (msg.action === 'sysmsg') {
       stateHandler?.({ action:'sysmsg', deviceid: msg.deviceid, params: msg.params })

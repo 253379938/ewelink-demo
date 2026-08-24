@@ -107,7 +107,8 @@ onMounted(async () => {
       );
       await Promise.allSettled(promises);
     }
-  } finally {
+  } catch { }
+  finally {
     thingLoading.value = false;
   }
 });

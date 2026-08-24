@@ -1,6 +1,7 @@
 import type { EWeLinkDevice } from "../../type/devices.ts";
 import { uiidConfig } from "../../constants/uiid/index.ts";
 import { config } from "../../config.ts";
+import type { Params } from "../../type/params.ts";
 
 // transform endpoints
 export function buildEndpointUIID
@@ -188,3 +189,51 @@ export function capabilitiesToParams(capabilities: Capabilities): { [key: string
     return params;
 }
 
+// param - -> name(state/capabilities) & payload
+
+export function getNameAndPayloadFromParams(params: Params, device: Record<string, any>) {
+    // online update
+    if (params.action === 'sysmsg' && 'online' in params.params) {
+        return {
+            name: 'DeviceOnlineChangeReport',
+            payload: {
+                online: params.params.online
+            }
+        }
+    }
+    if (params.action !== 'update') return {}
+    // 检验 state 还是 capabilities
+    const days = ['mon', 'tues', 'wed', 'thur', 'fri', 'sat', 'sun'];
+      const isWeeklySchedule = days.some(day => day in params.params);
+      const name = isWeeklySchedule ? 'DeviceInformationUpdatedReport' : 'DeviceStatesChangeReport';  
+      let payload;
+      // state 修改
+      if (name === 'DeviceStatesChangeReport') {
+        // 目标温度修改需补全 eco & auto
+        if ('manTargetTemp' in params.params) {
+          const newParams = {
+            autoTargetTemp: device.state['thermostat-target-setpoint']['auto-mode'].targetSetpoint * 10,
+            ecoTargetTemp: device.state['thermostat-target-setpoint']['eco-mode'].targetSetpoint * 10,
+            ...params.params
+          }      
+          const state = paramsToIHostState(newParams);
+          payload = { state }
+          console.log('state update, eWeLink --> iHost', state);
+        } else if('workMode' in params.params) {
+          const state = paramsToIHostState(params.params);
+          payload = { state }
+          console.log('state update, eWeLink --> iHost', state);
+        } else {
+            return {}
+        }
+      }
+      // capabilities 修改
+      if (name === 'DeviceInformationUpdatedReport') {
+        const capabilities = paramsToIHostCapabilities(params.params);
+        console.log('capabilities update, eWeLink --> iHost', capabilities);
+        payload = { capabilities: capabilities }
+    }
+    return {
+        name, payload
+    }
+}

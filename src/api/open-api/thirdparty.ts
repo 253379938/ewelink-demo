@@ -22,21 +22,6 @@ export const thirdpartyDevice = (eWeLinkEvent: DeviceItemData) => {
         })
 }
 
-// update thirdparty device state
-export const updateThirdpartyDevice = (params: Record<string, any>, deviceId: string ) => {
-    return requestOpenApi.post('/open-api/device',
-        {
-            params, deviceId, name:'DeviceStatesChangeReport'
-        })
-}
-// update thirdparty device Capability
-export const updateThirdpartyCapability = (params: Record<string, any>, deviceId: string) => {
-    return requestOpenApi.post('/open-api/device',
-        {
-            params, deviceId, name:'DeviceInformationUpdatedReport'
-        })
-}
-
 // 查询同步设备
 export const getThirdpartyDevice = () => {
     return requestOpenApi.get('/open-api/devices')
