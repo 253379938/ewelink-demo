@@ -2,8 +2,6 @@ import type { EWeLinkDevice } from "../../type/devices.ts";
 import { uiidConfig } from "../../constants/uiid/index.ts";
 import { config } from "../../config.ts";
 import type { Params } from "../../type/params.ts";
-import os from 'os';
-const computerName = os.hostname();
 
 // transform endpoints
 export function buildEndpointUIID
@@ -20,7 +18,7 @@ export function buildEndpointUIID
         manufacturer: brandName || '',
         model: productModel || '',
         firmware_version: params?.fwVersion || '',
-        service_address: `http://${computerName}.local:${config.port}/open-api/device/${deviceid}`,
+        service_address: `${config.ServerAddress}/open-api/device/${deviceid}`,
     };
 }
 

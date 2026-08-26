@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.gitignore
+*.local
+.vscode
+.idea
+doc
+thirdparty-req-server/node_modules
+thirdparty-req-server/data
+thirdparty-req-server/dist
