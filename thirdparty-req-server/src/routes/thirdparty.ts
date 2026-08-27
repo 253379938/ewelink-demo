@@ -120,9 +120,13 @@ thirdpartyRouter.post('/open-api/device/:deviceId', async (req, res, next) => {
 thirdpartyRouter.get('/open-api/devices', async (_req, res, next) => {
   try {
     const ihost = getIHostCred();
-    const { data: { device_list } } = await getThirdpartyDevice(ihost?.at as string, ihost?.url as string);
-    res.json({ status: 'ok', data: { device_list } });
-    console.log('search iHost devices', device_list);
+    if (!ihost) {
+      res.json({ error: 10049, msg: 'no iHost cred' });
+    } else {
+      const { data: { device_list } } = await getThirdpartyDevice(ihost?.at as string, ihost?.url as string);
+      res.json({ status: 'ok', data: { device_list } });
+      console.log('search iHost devices', device_list);
+    }
   } catch (err) {
     next(err);
   }

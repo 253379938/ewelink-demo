@@ -13,6 +13,7 @@ import DeleteModel from "./components/thirdparty/deleteModel.vue";
 
 import UnSupportDeviceModel from "./components/device/UnSupportDeviceModel.vue";
 import { getThirdpartyDevice } from "@/api/open-api/thirdparty.ts";
+import { ElMessage } from "element-plus";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -86,7 +87,14 @@ const getDeviceMap = async () => {
     if (!iHost) {
       thirdpartyMap.value = [];
     } else {
-      const res = await getThirdpartyDevice();
+      const res = await getThirdpartyDevice() as unknown as {data: any, error: number};
+      if (res.error === 10049) {
+        ElMessage.warning("请重新登录或获取 iHost 凭证");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("iHost");
+        router.push("/login");
+      }
       const list = res.data?.device_list || [];
       thirdpartyMap.value = list
         .filter((d: { [key: string]: any }) => d.serial_number && d.third_serial_number)
