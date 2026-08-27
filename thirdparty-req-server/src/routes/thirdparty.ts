@@ -34,10 +34,18 @@ thirdpartyRouter.post('/open-api/thirdparty/event', async (req, res, next) => {
   try {
     const { eWeLinkEvent } = req.body ?? {};
     const ihost = getIHostCred();
-    const device = buildEndpoint[eWeLinkEvent.productModel as keyof typeof buildEndpoint].buildEndpointUIID(eWeLinkEvent);
-    const data = await thirdpartyDevice(device, ihost?.at ?? '', ihost?.url ?? '');
-    console.log('同步设备, eWeLink --> iHost', device);
-    res.json({ status: 'ok', data });
+    const { data: { device_list } } = await getThirdpartyDevice(ihost?.at as string, ihost?.url as string);
+    const isSyncList = device_list.filter((d: { [key: string]: any }) => d.third_serial_number && d.serial_number)
+    // 后期可替换 at + deviceid, 暂时使用 id 判断    
+    if (isSyncList.findIndex((d: { [key: string]: any }) => d.third_serial_number === eWeLinkEvent.deviceid) >= 0) {
+      console.log('已同步过设备');
+      res.json({ status: 'ok', msg: '已同步设备' });
+    } else {
+      const device = buildEndpoint[eWeLinkEvent.productModel as keyof typeof buildEndpoint].buildEndpointUIID(eWeLinkEvent);
+      const data = await thirdpartyDevice(device, ihost?.at ?? '', ihost?.url ?? '');
+      console.log('同步设备, eWeLink --> iHost', device);
+      res.json({ status: 'ok', data });
+    }
   } catch (err) {
     next(err);
   }

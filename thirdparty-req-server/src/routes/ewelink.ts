@@ -11,8 +11,8 @@ eWeLinkRouter.post('/api/user/login', async (req, res, next) => {
         const appid = req.get('X-CK-Appid');
         if (!appid) res.json({ error: 401, data: {}, msg: 'require appid' });
         const loginAt = req.get('Authorization')!;
-        const { data } = await eWeLinkLogin(account, loginAt, appid!);
-        res.json({ error: 0, data, msg: 'success' });
+        const { data, error } = await eWeLinkLogin(account, loginAt, appid!) as unknown as {data: any, error: string};        
+        res.json({ error, data, msg: 'success' });
         saveEWeLinkCred(data.at, data.user.apikey, appid!);
     } catch (err) {
         next(err);
