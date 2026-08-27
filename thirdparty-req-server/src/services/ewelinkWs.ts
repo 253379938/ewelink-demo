@@ -207,6 +207,7 @@ export function close() {
   pendingMap.clear()
   if (ws) {
     ws.close(1000, 'close')
+    ws.terminate();
     ws = null
   }
 }

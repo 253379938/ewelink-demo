@@ -94,3 +94,13 @@ export function broadcastToWeb(data: Record<string, any>) {
     if (ws.readyState === WebSocket.OPEN) ws.send(payload);
   }
 }
+
+export function closeClients() {
+  for (const ws of webClients) {
+    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+      ws.close();
+      ws.terminate();
+    }
+  }
+  webClients.clear();
+}
