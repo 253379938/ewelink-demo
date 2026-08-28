@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { User, Lock, Location } from '@element-plus/icons-vue';
 import {  reactive } from 'vue';
-import { regionMapMerge, appSecret, type RegionInfo } from "@/constants"
-import crypto from 'crypto-js'
+import { regionMapMerge, type RegionInfo } from "@/constants"
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/store/userStore'
 import { loginRequest } from '@/api/ewelink-api/api';
@@ -23,10 +22,8 @@ const login = async () => {
         phoneNumber: `${accountForm.countryCode}${accountForm.phoneNumber}`,
         password: accountForm.password,
     };
-    const hashSecret = crypto.HmacSHA256(JSON.stringify(formatAccount), appSecret);
-    const secretBase64 = hashSecret.toString(crypto.enc.Base64);
     try {
-        const res = await loginRequest(formatAccount, secretBase64);
+        const res = await loginRequest(formatAccount);
         userStore.setUserInfo(res.data);
         router.push('/home');
     } catch (err) {

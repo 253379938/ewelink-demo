@@ -1,5 +1,4 @@
 import request from "@/request/request"
-import { appid } from "@/constants"
 type Account = {
     countryCode: string,
     phoneNumber: string,
@@ -7,16 +6,10 @@ type Account = {
 }
 
 // login
-export const loginRequest = (account: Account, loginAt: string) => {
+export const loginRequest = (account: Account) => {
     return request.post('/api/user/login',
         {
             account,
-        }, {
-            headers: {
-                'Authorization': `Sign ${loginAt}`,
-                'Content-Type': 'application/json',
-                "X-CK-Appid": appid
-            }
         })
 }
 

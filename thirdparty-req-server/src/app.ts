@@ -1,25 +1,16 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { env } from 'node:process'
 import express from 'express'
 import { routes } from './routes/index.ts'
 import { errorHandler, notFound } from './middleware/error.ts'
 
-// dist路径
-const distDir = join(import.meta.dirname, '../../dist')
+// dist 路径
+const distDir = join(import.meta.dirname, '../public')
 
 let indexHtml = ''
 try {
   indexHtml = readFileSync(join(distDir, 'index.html'), 'utf-8')
 } catch {
-  
-}
-
-// 运行时注入 script 读取环境变量
-function injectRuntimeConfig(html: string): string {
-  const config = { APP_ID: env.APP_ID || '', APP_SECRET: env.APP_SECRET || '' }
-  const script = `<script>window.__APP_CONFIG__ = ${JSON.stringify(config)}</script>`
-  return html.replace('</head>', `${script}</head>`)
 }
 
 export function createApp() {
@@ -30,10 +21,9 @@ export function createApp() {
   // 设备同步 open-api router
   app.use(routes)
 
-  // 静态资源(若访问'/',不会默认返回 index,进入下一中间件)
-  app.use(express.static(distDir, { index: false }))
+  app.use(express.static(distDir))
 
-  // 非 API 的 GET 请求返回注入环境变量的 index
+  // 非 API 的 GET 请求返回 index.html
   app.use((req, res, next) => {
     if (
       req.method !== 'GET' ||
@@ -43,7 +33,7 @@ export function createApp() {
     ) {
       return next()
     }
-    res.type('html').send(injectRuntimeConfig(indexHtml))
+    res.type('html').send(indexHtml)
   })
 
   // 错误处理

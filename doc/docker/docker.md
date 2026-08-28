@@ -56,77 +56,15 @@ dockerfile 是一种基于文本的文件，用于创建容器镜像。包含了
 
 在 iHost Docker上 添加 Add-on ，找到对应镜像名称添加然后进行安装。安装完成之后运行：
 
-- 填写端口映射，`5173:3001`，如果主机端口更改，下方 `SERVER_ADDRESS`也要更改；容器端口更改，下方需要新增`PORT`环境变量指定服务监听端口
+- 填写端口映射，`5173:3001`，与下方`Host_PORT`和`PORT`一致
 
 - 填写环境变量
   - `APP_ID`和`APP_SECRET`
-  - `SERVER_ADDRESS`：同步设备回调地址，`iHost + port`
+  - `HOST_PORT`：可选，同步设备回调地址端口号，默认`5173`
   - `PORT`：可选，服务监听端口，默认`3001`
 
 #### 遇到的问题
 
-##### 环境变量
-
-​	`APP_Id`和`APP_SECRET`需要以环境变量的形式注入，在`Web`端需要先构建打包。不能将`APP_Id`和`APP_SECRET`在此时注入，所以需要在运行时动态注入。所以在`Server`端挂载静态资源时添加了一个中间件拦截非`api`的`get`请求，此处对要返回的`index.html`处理注入环境变量。
-
-thirdparty-req-server\src\app.ts
-
-```typescript
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { env } from 'node:process'
-import express from 'express'
-import { routes } from './routes/index.ts'
-import { errorHandler, notFound } from './middleware/error.ts'
-
-// dist路径
-const distDir = join(import.meta.dirname, '../../dist')
-
-let indexHtml = ''
-try {
-  indexHtml = readFileSync(join(distDir, 'index.html'), 'utf-8')
-} catch {
-  
-}
-
-// 运行时注入 script 读取环境变量
-function injectRuntimeConfig(html: string): string {
-  const config = { APP_ID: env.APP_ID || '', APP_SECRET: env.APP_SECRET || '' }
-  const script = `<script>window.__APP_CONFIG__ = ${JSON.stringify(config)}</script>`
-  return html.replace('</head>', `${script}</head>`)
-}
-
-export function createApp() {
-  const app = express()
-
-  app.use(express.json())
-
-  // 设备同步 open-api router
-  app.use(routes)
-
-  // 静态资源(若访问'/',不会默认返回 index,进入下一中间件)
-  app.use(express.static(distDir, { index: false }))
-
-  // 非 API 的 GET 请求返回注入环境变量的 index
-  app.use((req, res, next) => {
-    if (
-      req.method !== 'GET' ||
-      req.path.startsWith('/open-api') ||
-      req.path.startsWith('/api') ||
-      !indexHtml
-    ) {
-      return next()
-    }
-    res.type('html').send(injectRuntimeConfig(indexHtml))
-  })
-
-  // 错误处理
-  app.use(notFound)
-  app.use(errorHandler)
-
-  return app
-}
-```
 
 ##### docker stop code 137
 

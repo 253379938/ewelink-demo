@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 thirdparty-req-server/data/
+thirdparty-req-server/public/
 
 # Editor directories and files
 .vscode/*

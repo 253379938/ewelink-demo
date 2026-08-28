@@ -1,19 +1,20 @@
 import { Router } from 'express'
 import { eWeLinkLogin, getEWeLinkFamily, getEWeLinkThings } from '../services/ewelink.ts';
 import { saveEWeLinkCred } from '../db/index.ts';
+import { config } from '../config.ts';
 
 export const eWeLinkRouter = Router()
 
-// ewelink login
+// ewelink login（web 只传账号，签名 + appid 由服务端处理）
 eWeLinkRouter.post('/api/user/login', async (req, res, next) => {
     try {
         const { account } = req.body ?? {};
-        const appid = req.get('X-CK-Appid');
-        if (!appid) res.json({ error: 401, data: {}, msg: 'require appid' });
-        const loginAt = req.get('Authorization')!;
-        const { data, error } = await eWeLinkLogin(account, loginAt, appid!) as unknown as {data: any, error: string};        
+        if (!account) return res.json({ error: 401, data: {}, msg: 'require account' });
+        const { data, error } = await eWeLinkLogin(account) as unknown as {data: any, error: string};
         res.json({ error, data, msg: 'success' });
-        saveEWeLinkCred(data.at, data.user.apikey, appid!);
+        if (data?.at && data?.user?.apikey) {
+            saveEWeLinkCred(data.at, data.user.apikey, config.appId);
+        }
     } catch (err) {
         next(err);
     }

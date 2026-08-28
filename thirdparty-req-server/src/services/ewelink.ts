@@ -1,5 +1,6 @@
 import axios from 'axios'
-import { getEWeLinkCred } from '../db/index.ts';
+import { createHmac } from 'node:crypto'
+import { config } from '../config.ts'
 
 type Account = {
     countryCode: string,
@@ -16,41 +17,35 @@ const http = axios.create({
 http.interceptors.response.use((response) => response.data);
 
 // ewelink login
-export const eWeLinkLogin = (account: Account, loginAt: string, appid: string) => {
-    return http.post('/v2/user/login',
-            account,
-        {
-            headers: {
-                "Content-Type": 'application/json',
-                "Authorization": `${loginAt}`,
-                "X-CK-Appid": appid
-            }
-        })
+export const eWeLinkLogin = (account: Account) => {
+    const sign = createHmac('sha256', config.appSecret).update(JSON.stringify(account)).digest('base64')
+    return http.post('/v2/user/login', account, {
+        headers: {
+            "Content-Type": 'application/json',
+            "Authorization": `Sign ${sign}`,
+            "X-CK-Appid": config.appId,
+        }
+    })
 }
 
 // ewelink family
 export const getEWeLinkFamily = (at: string) => {
-    const cred = getEWeLinkCred();
-    return http.get('/v2/family',
-        {
-            headers: {
-                "Content-Type": 'application/json',
-                "Authorization": `${at}`,
-                "X-CK-Appid": cred?.appid
-            }
-        })
+    return http.get('/v2/family', {
+        headers: {
+            "Content-Type": 'application/json',
+            "Authorization": `${at}`,
+            "X-CK-Appid": config.appId,
+        }
+    })
 }
 
 // ewelink things
 export const getEWeLinkThings = (familyid: string, at: string) => {
-    const cred = getEWeLinkCred();
-    return http.get(`/v2/device/thing?familyid=${familyid}`,
-        {
-            headers: {
-                "Content-Type": 'application/json',
-                "Authorization": `${at}`,
-                "X-CK-Appid": cred?.appid
-            }
-        })
+    return http.get(`/v2/device/thing?familyid=${familyid}`, {
+        headers: {
+            "Content-Type": 'application/json',
+            "Authorization": `${at}`,
+            "X-CK-Appid": config.appId,
+        }
+    })
 }
-

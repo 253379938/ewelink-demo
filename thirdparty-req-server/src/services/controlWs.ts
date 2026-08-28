@@ -2,7 +2,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import type { Server } from "node:http";
 import { connect as connectEWeLink, onState, sendUpdate } from "./ewelinkWs.ts";
-import { saveEWeLinkCred } from "../db/index.ts";
+import { config } from "../config.ts";
 
 const webClients = new Set<WebSocket>();
 
@@ -44,12 +44,11 @@ export function setupWsServer(server: Server) {
       try {
         const msg = JSON.parse(data.toString());
         // web ws 握手 (转发到云端 ws)
-        if (msg.action === "userOnline" && msg.at && msg.apikey && msg.appid) {
-          // saveEWeLinkCred(msg.at, msg.apikey, msg.appid);
+        if (msg.action === "userOnline" && msg.at && msg.apikey) {
           connectEWeLink({
             at: msg.at,
             apikey: msg.apikey,
-            appid: msg.appid,
+            appid: config.appId,
           }).catch((err: Error) =>
             console.error("ewelink ws userOnline err", err),
           );

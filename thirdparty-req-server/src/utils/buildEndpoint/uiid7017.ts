@@ -18,7 +18,7 @@ export function buildEndpointUIID
         manufacturer: brandName || '',
         model: productModel || '',
         firmware_version: params?.fwVersion || '',
-        service_address: `${config.ServerAddress}/open-api/device/${deviceid}`,
+        service_address: `${config.server_address}/open-api/device/${deviceid}`,
     };
 }
 

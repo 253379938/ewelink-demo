@@ -1,35 +1,21 @@
-# ============ 构建阶段 ============
-FROM node:22-bullseye-slim AS build
-ENV npm_config_registry=https://registry.npmmirror.com
-ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
+# 执行 pnpm build:deploy 后，拿到编译的 JS 和 Web dist
+FROM node:22-bullseye-slim
 RUN corepack enable
 WORKDIR /app
 
-# 分层 & install
+# server 构建产物：TS 编译后的 JS + Web dist + package.json
+COPY thirdparty-req-server/dist /app/thirdparty-req-server/dist
+COPY thirdparty-req-server/public /app/thirdparty-req-server/public
+COPY thirdparty-req-server/package.json /app/thirdparty-req-server/package.json
+
+# 安装生产依赖
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY thirdparty-req-server/package.json thirdparty-req-server/
-RUN pnpm install
+RUN pnpm install --frozen-lockfile --prod --filter thirdparty-req-server
 
-# COPY & build
-COPY . .
-RUN pnpm build
-RUN pnpm -F thirdparty-req-server run build
-
-# ============ 运行阶段 ============
-FROM node:22-bullseye-slim AS runtime
-RUN corepack enable
-WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3001
 
-# COPY dist & server & install
-COPY --from=build /app/thirdparty-req-server/package.json /app/thirdparty-req-server/package.json
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile --prod --filter thirdparty-req-server
-COPY --from=build /app/dist /app/dist
-COPY --from=build /app/thirdparty-req-server/dist /app/thirdparty-req-server/dist
-
-# db 挂在 VOLUME 上持久化
+# 挂载卷
 VOLUME /app/thirdparty-req-server/data
 
 EXPOSE 3001

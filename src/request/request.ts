@@ -1,5 +1,4 @@
 import axios from "axios";
-import { appid } from "@/constants";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 
@@ -10,8 +9,6 @@ const request = axios.create({
 const router = useRouter();
 
 request.interceptors.request.use((config) => {
-  config.headers["X-CK-Appid"] = appid;
-
   const accessToken = localStorage.getItem("accessToken");
   if (accessToken) {
     config.headers["Authorization"] = `Bearer ${accessToken}`;

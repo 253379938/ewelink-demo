@@ -2,6 +2,7 @@
 import WebSocket from 'ws'
 import axios from 'axios'
 import { updateThirdpartyDevice } from './ihost.ts'
+import { config } from '../config.ts'
 
 interface WsCreds {
   at: string
@@ -56,7 +57,7 @@ function sendUserOnline() {
       userAgent: 'app',
       ts: Math.floor(Date.now() / 1000),
       apikey: creds.apikey,
-      appid: creds.appid,
+      appid: config.appId,
       nonce: Math.random().toString(36).slice(2, 10),
       sequence: Date.now(),
     }),

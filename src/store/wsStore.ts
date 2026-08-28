@@ -1,6 +1,5 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import { appid } from "@/constants";
 import { useUserStore } from "@/store/userStore";
 import { useThingStore } from "@/store/home/thingStore";
 
@@ -76,7 +75,6 @@ export const useWsStore = defineStore("ws", () => {
                 at,
                 userAgent: "app",
                 apikey,
-                appid,
                 nonce: Math.random().toString(36).slice(2, 10),
                 sequence: Date.now(),
               }),
